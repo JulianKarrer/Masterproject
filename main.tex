@@ -1,0 +1,647 @@
+\RequirePackage{fix-cm}
+\documentclass[oneside, a4paper]{book}
+\usepackage[a4paper,width=150mm,top=25mm,bottom=25mm,bindingoffset=6mm]{geometry}
+
+% Required for inserting images
+\usepackage{eso-pic,graphicx}
+% misc
+\usepackage{caption}
+\DeclareCaptionType{equ}[][]
+%\captionsetup[equ]{labelformat=empty}
+\usepackage{subcaption}
+\usepackage{multicol}
+\usepackage{float}
+\usepackage{adjustbox} % oversized table
+
+% appendix
+\usepackage[toc]{appendix}
+
+% Default font to sans serif
+\renewcommand{\familydefault}{\sfdefault}
+\RequirePackage[T1]{fontenc} 
+\RequirePackage[tt=false, type1=true]{libertine} 
+\RequirePackage[varqu]{zi4} 
+% \RequirePackage[libertine]{newtxmath}
+
+% chapters and headers
+\usepackage[Conny]{fncychap}
+
+\usepackage{fancyhdr}
+\pagestyle{fancy}
+\renewcommand{\headrulewidth}{0.1pt}
+\renewcommand{\chaptermark}[1]{\markboth{\MakeUppercase{\textsf{{#1}}}}{}}
+\renewcommand{\sectionmark}[1]{\markright{\MakeUppercase{\textsf{\thesection\ #1}}}{} }
+
+% section styling
+\usepackage{titlesec}
+
+% algorithms
+\usepackage{algorithm}
+\usepackage{algpseudocode}
+
+% theorems and definitions
+\usepackage{amsthm}
+\newtheorem{definition}{Definition}
+
+% FAT FONTS
+\usepackage{bm} % bold fonts in math mode
+\newcommand\fat[1]{{\boldmath{\textbf{#1}}}}
+\newcommand\emphasis[1]{{\scshape\bfseries#1}}
+
+% mathematical fonts and graphics
+\usepackage{mathtools}
+\usepackage{xfrac} % sfrac for diagonal slashes in fractions
+\usepackage{amsfonts} % math fonts
+\usepackage{dsfont} % math fonts
+\usepackage{bbm} % mathbb fonts
+\usepackage{mathrsfs} % fancy swirly font
+\usepackage{gensymb} % degree sign
+
+% draw graphs
+\usepackage[inline]{asymptote}
+\usepackage{qtree}
+\usepackage{tikz}
+
+% nicer fractions
+\usepackage{xfrac}
+
+% units
+\usepackage{siunitx}
+
+% plots
+\usepackage{pgfplots}
+\usepackage{pgfplotstable}
+\usepgfplotslibrary{external}
+\usepgfplotslibrary{patchplots}
+\usepgfplotslibrary{groupplots}
+\pgfplotsset{compat=1.18} 
+\tikzexternalize[prefix=tikz,optimize=false]
+
+
+% define the Spectral_r color scheme
+\usepackage{xcolor}
+\definecolor{Spectral0}{RGB}{158, 1, 66}
+\definecolor{Spectral1}{RGB}{213, 62, 79}
+\definecolor{Spectral2}{RGB}{244, 109, 67}
+\definecolor{Spectral3}{RGB}{253, 174, 97}
+\definecolor{Spectral4}{RGB}{254,224,139}
+\definecolor{Spectral5}{RGB}{255,255,191}
+\definecolor{Spectral6}{RGB}{230,245,152}
+\definecolor{Spectral7}{RGB}{171,221,164}
+\definecolor{Spectral8}{RGB}{102,204,204}
+\definecolor{Spectral9}{RGB}{50,136,189}
+\definecolor{Spectral10}{RGB}{94,79,162}
+\pgfplotsset{
+  colormap={Spectral_r}{
+    rgb255(0cm)=(94,79,162)         % 0.0
+    rgb255(1cm)=(50,136,189)        % 0.1
+    rgb255(2cm)=(102,204,204)       % 0.2
+    rgb255(3cm)=(171,221,164)       % 0.3
+    rgb255(4cm)=(230,245,152)       % 0.4
+    rgb255(5cm)=(255,255,191)       % 0.5
+    rgb255(6cm)=(254,224,139)       % 0.6
+    rgb255(7cm)=(253,174,97)        % 0.7
+    rgb255(8cm)=(244,109,67)        % 0.8
+    rgb255(9cm)=(213,62,79)         % 0.9
+    rgb255(10cm)=(158,1,66)         % 1.0
+    }
+}
+
+
+% get width of given text
+\usepackage{calc}
+
+% define a horizontal spacer
+\newcommand\horizontalspacer[0]{\vspace{5pt}\noindent\textcolor{lightgray}{\rule{\textwidth}{1mm}}
+\vspace{5pt}}
+
+% clickable links
+\usepackage{hyperref}
+\hypersetup{
+    colorlinks,
+    citecolor=black,
+    filecolor=black,
+    linkcolor=black,
+    urlcolor=black
+}
+% citations
+\usepackage[
+  backend=biber,
+  sorting=none,
+  style=ieee,
+  doi=false,
+  % isbn=false,
+  url=false,
+  eprint=false
+]{biblatex}
+\addbibresource{refs.bib}
+
+% fancy boxes
+\usepackage{fancybox}
+\newcommand{\equationnamed}[2]{%
+  \setlength{\fboxsep}{2pt} % padding inside box
+  \setlength{\fboxrule}{0.01pt}
+  \begin{center}
+    \begin{minipage}{\textwidth}
+      \begin{center}\textsc{#1}\end{center}
+      #2
+    \end{minipage}
+  \end{center}
+}
+\newcommand{\equationnamedbox}[2]{%
+  \setlength{\fboxsep}{5pt} % padding inside box
+  \setlength{\fboxrule}{0.01pt}
+  \begin{center}
+    \fbox{
+      \begin{minipage}{0.4\textwidth}
+        \begin{center}\emphasis{#1}\end{center}
+        #2
+      \end{minipage}
+    }
+  \end{center}
+}
+
+% labels to enum items
+\usepackage{enumitem}
+
+% make empty lines skip
+% \usepackage{parskip}
+
+% ~~~~~~~~~ TYPESETTING AND OTHER MACROS ~~~~~~~~~~~~~~~~~~~~~
+
+\newenvironment{absolutelynopagebreak}
+  {\par\nobreak\vfil\penalty0\vfilneg
+   \vtop\bgroup}
+  {\par\xdef\tpd{\the\prevdepth}\egroup
+   \prevdepth=\tpd}
+
+% ~~~~~~~~~ AFANCY CHAPTER HEADINGS ~~~~~~~~~~~~~~~~~~~~~~~~~~~
+\makeatletter
+\def\thickhrulefill{\leavevmode \leaders \hrule height 1ex \hfill \kern \z@}
+\def\@makechapterhead#1{%
+  %\vspace*{50\p@}%
+  \vspace*{10\p@}%
+  {\parindent \z@ \centering \reset@font
+        \thickhrulefill\quad
+        \scshape \@chapapp{} \thechapter
+        \quad \thickhrulefill
+        \par\nobreak
+        \vspace*{10\p@}%
+        \interlinepenalty\@M
+        \hrule
+        \vspace*{10\p@}%
+        \Huge {\textbf{#1}} \par\nobreak
+        \par
+        \vspace*{10\p@}%
+        \hrule
+    \vskip 40\p@
+    % \vskip 100\p@
+  }}
+\def\@makeschapterhead#1{%
+  %\vspace*{50\p@}%
+  \vspace*{10\p@}%
+  {\parindent \z@ \centering \reset@font
+        \thickhrulefill
+        \par\nobreak
+        \vspace*{10\p@}%
+        \interlinepenalty\@M
+        \hrule
+        \vspace*{10\p@}%
+        \Huge \bfseries #1\par\nobreak
+        \par
+        \vspace*{10\p@}%
+        \hrule
+    \vskip 40\p@
+    % \vskip 100\p@
+  }}
+
+  
+\usepackage[pdftex,outline]{contour}
+
+% ~~~~~~~~~ ALGORITHM MACROS ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+\newcommand{\var}[1]{\text{\texttt{#1}}}
+\newcommand{\func}[1]{\text{\textsl{#1}}}
+
+\makeatletter
+\newcounter{phase}[algorithm]
+\newlength{\phaserulewidth}
+\newcommand{\setphaserulewidth}{\setlength{\phaserulewidth}}
+\newcommand{\Phase}[1]{%
+  \vspace{-1.25ex}
+  % Top phase rule
+  \Statex\leavevmode\llap{\rule{\dimexpr\labelwidth+\labelsep}{\phaserulewidth}}\rule{\linewidth}{\phaserulewidth}
+  \Statex\strut\refstepcounter{phase}\textit{Step ~\thephase~--~#1}% Phase text
+  % Bottom phase rule
+  % \vspace{-1.25ex}\Statex\leavevmode\llap{\rule{\dimexpr\labelwidth+\labelsep}{\phaserulewidth}}\rule{\linewidth}{\phaserulewidth}
+  }
+
+\makeatother
+\makeatother
+
+\setphaserulewidth{.1pt}
+
+% ~~~~~~~~~ MATH MACROS ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+% abs value macro
+% \DeclarePairedDelimiter\abs{\lvert}{\rvert}
+\newcommand\abs[1]{\left|#1\right|}
+\newcommand\norm[1]{\left\lVert#1\right\rVert}
+\newcommand\angled[1]{\left\langle#1\right\rangle}
+
+\newcommand\dist[1]{\left|\left|#1\right|\right|}
+\newcommand\arr[1]{\left\langle#1\right\rangle}
+
+% define the laplace operator 
+\newcommand*\Laplace{\mathop{}\!\mathbin\nabla^2}
+\newcommand\vek[1]{\vec{\bm{#1}}}
+\newcommand\mat[1]{{\mathds{#1}}}
+\newcommand\br[1]{\left(#1\right)}
+
+\DeclareMathOperator{\sgn}{sgn}
+\DeclareMathOperator{\erf}{erf}
+
+\DeclareMathOperator*{\argmax}{\arg\!\max}
+\DeclareMathOperator*{\argmin}{\arg\!\min}
+
+\newcommand\divergence{{\nabla\cdot}}
+
+
+% ~~~~~~~~~ START ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+\captionsetup[figure]{font=footnotesize,labelfont=footnotesize,justification=centering}
+\begin{document}
+\begin{titlepage}
+  \pagestyle{empty}
+
+  \begin{center}
+    \Huge\textbf{Simulating Incompressible Fluids with Weakly Coupled Rigid Bodies}\\
+    \vspace{0.5cm}
+    \Large{Julian Karrer}\\
+    \vfill
+    \Large
+    % \contour{black}{\textcolor{white}{Lab Course}}\\
+    % \contour{black}{\textcolor{white}{Master of Science in Computer Science}}\\
+    \begin{figure}[H]
+        \centering
+        \includegraphics[width=1\textwidth]{images/0_frame_1478.png}
+    \end{figure}
+    \vfill
+    % \vspace{5.2cm}
+    % \vspace{0.5cm}
+    \large
+    Faculty of Engineering\\
+    Department of Computer Science\\
+    Supervised by Prof. Dr.-Ing. Matthias Teschner\\
+    \vspace{0.5cm}
+    \includegraphics*[width=5cm]{images/ufr-logo.png}
+  \end{center}
+\end{titlepage}
+% \captionsetup[figure]{font=normalsize,labelfont=normalsize}
+
+\tableofcontents
+\newpage
+
+\chapter{Introduction}
+This report aims to outline a complete implementation of a robust, fully GPU-parallel particle based solver for incompressible fluid flow problems with weakly coupled rigid bodies that can two-way interact with the fluid. The solver is efficient enough to make simulations with high spatial resolution and corresponding particle counts well into the millions feasible on a single machine with consumer hardware. Diffuse spray, foam and air bubbles are generated in a physically motivated way to enhance visual realism for simulations of sufficiently large spatial scale for such effects to occur. \\
+
+The governing equations to be solved, namely the incompressible Navier-Stokes equations in Lagrangian form are introduced and discretized using the Smoothed Particle Hydrodynamics scheme, or SPH for short, in \autoref{chp:sph}. 
+
+This leads to a set of equations that can be worked into a fluid solver in \autoref{chp:fluid}. Most challengingly, this solver must uphold incompressibility, leading to a pressure solver that must solve the pressure Poisson equation, in this case using a relaxed Jacobi solver with different choices of source term that lead to different behaviour of the solver. 
+
+Once the fluid solver is completed, including one-way coupling to boundaries as discussed in \autoref{chp:rigid}, the remainder of the chapter discusses a second, rigid body solver, that uses an SPH-based surface representation to interact with the former and enable two-way interactions of rigid bodies with fluids. Challenges include a robust sampling of surfaces, the accurate calculation of the required volume and moments of mass of triangular meshes and 
+
+
+\chapter{Smoothed Particle Hydrodynamics}\label{chp:sph}
+    \section{Navier-Stokes Equations}\label{sec:navier-stokes}
+    In order to develop a numerical solver for fluid flow problems, the respective governing equations must first be discussed. In the case of linearly viscous, incompressible fluid flow, the framework of continuum mechanics yields a set of equations called the \emphasis{Navier-Stokes equations}. Since the focus on this report is on the implementation of the solver, these equations are only very concisely outlined in the following and the interested reader is referred to more extensive works such as by \cite[Anderson]{anderson} or a previous report authored by the present writer \autocite{labcourse} for a more thorough derivation.
+
+    \subsubsection*{Lagrangian Continuum Mechanics}
+    Since the flow problems in question occur not a microscopic scale, such as concerning the interaction of individual molecules, but a macroscopic scale instead, continuum mechanics is a suitable framework for the formulation of the governing equations. It assumes that the fluid is a continuum that is under deformation, wherein field quantities such as density, velocity etc. are convected with continuum elements as they deform, and makes use of the \emphasis{Material derivative} to apply the rules of calculus to these quantities \autocite{anderson}:
+    \begin{definition} The material derivative:
+      \[\frac{D}{Dt} := \underbrace{\frac{\partial}{\partial t}}_{\textit{local derivative}} + \underbrace{\br{\vek{v}\cdot \nabla}}_{\textit{convective derivative}}\]
+    \end{definition}
+    The first term represents the local derivative, or instantaneous rate of change of the quantity with respect to the continuum element, while the second describes the rate of change of the quantity at a fixed position due to the deformation of the continuum and consequently the convection of the continuum element with the velocity field $\vek{v}$. The frame of reference for each continuum element that is convected along with the velocity field is precisely the one in which the second term becomes zero, yielding the Lagrangian or so-called non-conservation form of the equations instead of the Eulerian form of the problem in which a static frame of reference is chosen \autocite{anderson}. We choose the Lagrangian representation in the following since the continuum itself is later discretized into particles that are advected with the flow and only quantities at particle positions will be of interest. An Eulerian discretization of the space within which the continuum exists could be chosen instead, but may be less suitable in application to free-surface flows with complex and dynamic boundary geometry \autocite{tutorial2019}.
+
+    \subsubsection*{Governing equations}
+    The governing equations can be derived from laws of conservation applied to the continuum. The first such conservation law is the \emphasis{conservation of mass} $\frac{Dm}{Dt}=0$, which can be transformed using either the Reynolds Transport theorem or the divergence theorem \autocite{labcourse} into the continuity equation of the form:
+    \equationnamedbox{Continuity Equation}{
+      \begin{equation}\label{eq:continuity}
+        \frac{D\rho}{Dt} +\rho\br{\divergence \vek{v}} = 0
+      \end{equation}
+    }
+    which has to hold across the entire volume integral over the fluid domain \autocite{anderson}. For incompressible flows, the density of any fluid element must remain constant across a wide range of pressures, as will be assumed is the case of water. This assumption leads to two equivalent constraints posed by the continuity equation \autocite{continuum-intro}: 
+    \begin{enumerate}
+      \item $\frac{D\rho}{Dt}=0$, the density of any fluid element cannot change 
+      \item $\divergence\vek{v}=0$ the velocity field of the fluid must be divergence free
+    \end{enumerate}
+    These expressions can be used to derive alternative source terms for the pressure solver in \autoref{sec:alternative-source-terms}.
+
+
+    The second conservation law to be considered is the \emphasis{conservation of momentum}. Since momentum is conserved, the material derivative of momentum across the fluid must be balanced by conservative forces acting on the fluid. These forces can be decomposed into stresses $\vek{t}$ acting in normal direction $\hat{\vek{n}}$ on the surface of each fluid element on one side, and external body forces per unit mass $\vek{b}^{ext}$ such as gravity acting on the entire volume. Inserting the definition of the \emphasis{Cauchy-Stress Tensor} $\mat{T}$ (sometimes referred to as $\bar\sigma$) where $\mat{T}\hat{\vek{n}}=\vek{t}$ and applying the divergence theorem as well as the continuity equation to the resulting integral equation yields that for every fluid element it must hold \autocite{continuum-intro}:
+    \equationnamed{Cauchy momentum equation}{
+      \begin{equation}
+        \rho\frac{D\vek{v}}{Dt} = \divergence\mat{T} + \rho\vek{b}^{ext}
+      \end{equation}
+      }
+
+    The stress tensor $\mat{T}$ can further be decomposed into the isotropic component $\mat{T} = -p\mat{1} + \mat{V}$ where $p$ is the hydrostatic pressure and $\mat{V}$ is the deviatoric stress or viscous stress tensor \autocite{incompressible-flow-volker}. This component can be modelled in terms of the symmetric rate of deformation tensor $\mat{D}$, which in sum with its antisymmetric counterpart, the spin tensor $\mat{W}$, makes up the velocity gradient \autocite{continuum-intro}. Assuming incompressible flow and a linearly viscous or Newtonian fluid, one can obtain \autocites{tutorial2019}{incompressible-flow-volker}:
+    \equationnamed{Constitutive Relation}{
+      \begin{equation}
+        \mat{T} = -p\mat{1} + \mu \br{\nabla\vek{v} + \br{\nabla\vek{v}}^T}
+      \end{equation}
+    }
+    where $\mu$ is the dynamic viscosity, which is related to the kinematic viscosity $\nu$ by $\nu=\sfrac{\mu}{\rho}$. For strongly enforced incompressibility, the pressure value $p$ can be interpreted as a Lagrange multiplier chosen such that the momentum equation satisfies the continuity equation \autocite{tutorial2019}, which will be the motivation for the iterative pressure solver discussed in \autoref{chp:fluid}. Inserting the constitutive relation into the Cauchy momentum equation, rearranging and applying the Theorem of Schwarz \autocite{incompressible-flow-volker} one can finally obtain the Navier-Stokes momentum equation for incompressible, Newtonian fluids in Lagrangian form:
+    \equationnamedbox{Navier Stokes Momentum Equation}{
+      \begin{equation}\label{eq:navier-stokes-momentum}
+        \frac{D\vek{v}}{Dt}=-\frac{1}{\rho}\nabla p + \nu\Laplace\vek{v}+\vek{b}^{ext}
+      \end{equation}
+    }
+
+    Apart from the momentum and continuity equations, the conservation of energy can be used to derive the energy equation which can be used to describe the thermal processes within such flows \autocite{anderson}, however this is not usually as relevant in the application to Computer Graphics and is neglected in the following. As such, the continuity and momentum equations are the main point of focus of this report, will be referred to as the Navier-Stokes equations and solved numerically.
+
+    % Since the flows of interest in this application are of macroscopic scale, the framework of continuum mechanics can be used, which assumes the fluid domain to be a continuously differentiable field of quantities to which the rules of calculus apply, instead of, for example, a discrete set of molecules of microscopic scale in which such assumptions would not adequately hold. One can define the \emphasis{material derivative} $\frac{D}{Dt}$ of such a field as a derivative of a field quantity with respect to time within some continuum element \autocite{anderson}:
+    % \begin{definition} The material derivative:
+    %   \[\frac{D}{Dt} := \frac{\partial}{\partial t} + \br{\vek{v}\cdot \nabla}\]
+    % \end{definition}
+    
+    % Since the continuum may, and in any dynamic case does deform, the continuum element under consideration is subject to convection by the velocity field of the fluid, yielding two views of the problem: the rate of change of the quantity can be described with respect to some static position, yielding an Eulerian view of the problem, or with respect to the position of the continuum element subject to convection, such that only the changes local to the element affect the material derivative and the convective term $\vek{v}\cdot \nabla$ is precisely zero, yielding a Lagrangian framework. Since a discretization of the continuum into particles is chosen here, the Lagrangian framework is especially suitable, leading to the so-called non-conservation form of the equations.
+
+    \newpage\section{SPH Discretization}\label{sec:sph-discretization}
+    In order to numerically solve the Navier-Stokes equations, it is necessary to discretize the equations in space and time to make them tractable for simulation. As previously discussed, a Lagrangian simulation will be conducted, meaning the continuum itself is discretized into fluid elements of some mass, at which field quantities such as density, velocity and pressure must be determined and which are advected with the velocity field according to Newton's laws of motion. 
+    
+    Smoothed Particle Hydrodynamics, or SPH for short, is an interpolation scheme which can be used to reconstruct a continuous and differentiable field from quantities sampled at individual points that each represent some fluid volume, which we refer to as particles. This representation and the SPH scheme allow field quantities to be computed at any point of interest and at particle locations in particular, making it suited for realizing a Lagrangian simulation.
+
+    \subsubsection*{Derivation}
+
+    The SPH method can be derived from a relaxation of the unit impulse or Dirac $\delta$ distribution, which is defined as \autocite{signal-processing-falaschi}:
+    \equationnamed{Dirac $\delta$-distribution}{
+      \vspace{-0.5cm}
+      \begin{align}
+        \int_{-\infty}^\infty\delta(x)\,dx &=1 &\textit{normalization}\\
+        x\neq0 \implies \delta(x)&=0 &
+      \end{align}  
+    }
+    and analogously for higher dimensional arguments $\delta\br{\vek  x}$. The $\delta$-distribution describes point-like samples in space, as indicated by the sampling property $f(x)\delta(x-x_s) = f(x_s)\delta(x-x_s)$ for sample positions $x_s$ from which the sifting property can be obtained \autocite{signal-processing-falaschi}:
+    \begin{equation}\label{eq:sifting-property}
+      f(x) = \int_{-\infty}^\infty f(x_s)\delta(x-x_s) \,dx
+    \end{equation}
+    Which means that by the convolution theorem \autocite{tutorial2019}:
+    \begin{equation}
+      f(\vek{x})  = \int_\Omega f(\vek{x}')\delta(\vek{x}-\vek{x}')\,dV' = (f\star \delta) (\vek{x})
+    \end{equation}
+    where $\star$ is the convolution operator on functions.
+    While this serves as a precise description of a perfect sampling of a field, it is unsuited for numerical simulation since important properties such as differentiability are not given for a finite number of samples. Instead, two approximations are made to arrive at the SPH scheme:
+    \begin{enumerate}
+      \item The $\delta$-distribution is approximated by a kernel function $W$ with desirable properties
+      \item The integral in \autoref{eq:sifting-property} is approximated by a sum over the finite fluid samples.
+    \end{enumerate}
+
+    The SPH sum at a sample position $\vek{x}_i$ then reads:
+    \begin{align}
+      f(\vek{x}_i) &= \int_\Omega f(\vek{x}_j)\delta(\vek{x}_i-\vek{x}_j)\,dV_j &\\ 
+      &\approx \int_\Omega f(\vek{x}_j) W(\vek{x}-\vek{x}_j, \hbar)\,dV_j &\text{$\delta\br{\vek{x}_{ij}}\approx W\br{\vek{x}_{ij}, \hbar}$}\\
+      &\approx \sum_{j\in\mathcal{N}_i} f(\vek{x}_j) W(\vek{x}_{ij}, \hbar) V_j  &\textit{finite sample set}
+    \end{align}
+    where $\mathcal{N}_i = \{j : \abs{\vek{x}_{ij}}<\hbar\}$ is the set of neighbour samples of $i$ within some radius $\hbar$, which is finite for compactly supported $W$. Denoting quantities $f(\vek{x}_i)$ as $f_i$ etc., the volume $V_j$ associated with sample $j$ can be expressed as $\frac{m_j}{\rho_j}$ for short, resulting in the standard SPH sum:
+    \equationnamedbox{Standard SPH Sum}{\begin{equation}\label{eq:sph-sum}
+      \angled{f_i} = \sum_{j\in\mathcal{N}_i} \frac{m_j}{\rho_j} f_j W_{ij} 
+    \end{equation}}
+
+    \subsubsection*{Kernel function}
+    The kernel function is parametrized by $\vek{x}_{ij}=\vek{x}_i-\vek{x}_j$ for samples $i,j$ and a kernel support radius $\hbar$. We denote $W_{ij} := W(\vek{x}_{ij},\hbar) $ for short. For the approximation to be consistent, $W$ must converge to $\delta$ as the support radius goes to zero, meaning the kernel must fulfill \autocite{tutorial2019}:
+    \begin{align}
+      \int_\Omega W(\vek{x}_{ij},\hbar) &= 1 &\textit{normalization}\\
+      \lim_{\hbar\rightarrow 0} W(\vek{x}_{ij},\hbar) &= \delta(\vek{x}_{ij}) &\textit{Dirac-$\delta$ condition}
+    \end{align}
+    Further useful properties include \autocite{tutorial2019}:
+    \begin{align}
+      \abs{\vek{x}_{ij}}>\hbar &\implies W(\vek{x}_{ij},\hbar) &\textit{compact support}\\
+      W(\vek{x}_{ij},\hbar) &= W(\vek{x}_{ji}, \hbar) &\textit{spherical symmetry}\\
+      W(\vek{x}_{ij},\hbar) &> 0 &\textit{positivity}\\
+       W(\vek{x}_{ij},\hbar) &\in C^2 &\textit{twice continuously differentiable}
+    \end{align}
+    since compact support can decrease the number of non-zero contributions for non-degenerate cases from $\mathcal{O}\br{N^2}$ to $\mathcal{O}\br{N}$ in the number $N$ of samples and is vital for computational efficiency. Spherical symmetry and normalization together enable methods for ensuring first order consistency \autocite{tutorial2019}. Positivity is vital for approximations of quantities such as absolute pressure, mass density etc. that must not be negative and can be neglected otherwise, while $C^2$-continuity is convenient for the discretization of second-order partial differential equations \autocite{tutorial2019}.\\
+
+    Due to many highly convenient signal-theoretical properties of the Gaussian kernel, such as not overshooting approximated step-functions, not creating new zero-crossings of second derivatives and having optimal spatial and frequency locality in the sense of the uncertainty inequality \autocite{gauss-optimal}, many commonly employed kernel functions mimic a truncated Gaussian distribution using polynomial splines that are efficient to evaluate. In $d$ dimensions, due to symmetry and compact support to $\hbar$, all kernel functions can be represented with respect to a one-dimensional shape function $w$ and its derivative $\partial_q w$ as \autocite{band-phd}:
+    \begin{align}
+      W(\vek{x}_{ij}, \hbar) &= \frac{\alpha(d)}{\hbar^d}w\br{q}\\
+      \nabla W(\vek{x}_{ij}, \hbar) &= \frac{\alpha(d)}{\hbar^{d+1}}\frac{\vek{x}_{ij}}{\abs{\vek{x}_{ij}}} \partial_q w\br{q}\\
+    \end{align}
+    where $q = \frac{\abs{\vek{x}}}{\hbar} \in \left[0,1\right]$ and $\alpha(d)$ depends only on dimensionality. As in much of the literature, the Cubic Spline kernel is employed in this report \autocite{band-phd}:
+    \begin{align}
+      w(q) &= \br{1-q}^3_+ - 4\br{\sfrac{1}{2}-q}^3_+\\
+      \partial_q w(q) &= -3\br{1-q}^2_+ - 12\br{\sfrac{1}{2}-q}^2_+\\
+      \alpha(3) &= \sfrac{16}{\pi}
+    \end{align}
+    where $(x)_+ := \max\br{0, x}$. These functions are illustrated in \autoref{fig:cubic-spline}. As is often recommended \autocite{tutorial2019}, a kernel support $\hbar=2h$ of two times the initial spacing between particles $h$ is used for all calculations.
+
+    \begin{figure}
+      \centering
+      \begin{tikzpicture}[domain=0:1]
+        \begin{axis}[xmin=0, xmax=1,ymin=0, ymax=1.2, grid=both,
+          width=0.8\textwidth, height=0.5\textwidth]
+          \addplot[red, thick, samples=100, smooth, domain=0:1]  
+            {(max(0,1-\x)^3-4*max(0,0.5-\x)^3)};
+          \addplot[orange, thick, samples=100, smooth, domain=0:1]  
+            {(3*max(0,1-\x)^2-12*max(0,0.5-\x)^2)};
+            \legend{$w(q)$, $\partial_qw(q)$,}
+            \legend{$w(q)$, $\partial_qw(q)$}
+        \end{axis}
+      \end{tikzpicture}
+      \caption{The shape function $w(q)$ that defines the Cubic Spline kernel function and its first derivative are plotted for all values of $q\in[0,1]$ that yield non-zero $w(q)$. The function is compactly supported. Since the kernel function $W$ is spherically symmetric, this one-dimensional function of the scaled distance is sufficient to describe $W$ in any dimensionality, only the scaling factors $\alpha$ have to be adjusted.}\label{fig:cubic-spline}
+    \end{figure}
+
+    \subsubsection*{Differential Operators}
+    The gradient of the kernel function can be used to directly to approximate differential operators such as gradient, divergence and rotation on vector fields, the least straightforward example amongst them perhaps being:
+    \begin{equation}
+      \angled{\nabla \vek{f}_i}_\otimes = \sum_{j\in\mathcal{N}_i} \frac{m_j}{\rho_j} \vek{f}_j \otimes \nabla W_{ij}
+    \end{equation}
+    where $\otimes$ is the dyadic product \autocite{tutorial2019}. Such direct discretization can lead to poor approximation quality in practice, especially for low support radii $\hbar$, which has lead to the development of alternative discretizations with useful properties.
+
+    One such discretization is the \emphasis{difference formula}, which subtracts the first Taylor series term of the discretization error to restore 0th order consistency even for suboptimal samplings, yielding a more accurate approximation for the gradient of a scalar field \autocites{tutorial2019}{price-2012}:
+    \equationnamed{Difference Formula}{\begin{equation}\label{eq:sph-difference}
+      \angled{\nabla f_i}_- = \angled{\nabla f_i} - f_i\angled{\nabla 1} = \sum_{j\in\mathcal{N}_i} \frac{m_j}{\rho_j} \br{f_j - f_i} \nabla_iW_{ij}
+    \end{equation}}
+
+    Another useful alternative discretization for the gradient of a scalar field is the \emphasis{symmetric formula}, which can be derived from the discrete Lagrangian particularly such that when applied to the pressure field for example and a standard approximation of density is used, symmetric forces that conserve linear and angular momentum can be obtained \autocites{tutorial2019}{price-2012}:
+    \equationnamed{Symmetric Formula}{
+      \begin{equation}\label{eq:sph-symmetric}
+        \angled{\nabla f_i}_\parallel = \rho_i\sum_{j\in\mathcal{N}_i} m_j \br{\frac{f_i}{\rho_i^2} + \frac{f_j}{\rho_j^2}} \nabla_iW_{ij}
+      \end{equation}
+    }
+    While this formula is generally less accurate than the difference formula, the conservation of momenta can be a benefit that in practice outweighs lacking guarantees of first or even 0th order consistency for arbitrary samplings \autocite{tutorial2019}.
+
+    Lastly, second derivatives must be discretized, particularly the Laplace operator necessary to describe dissipative terms such as viscosity \autocite{price-2012}. However, since the second derivative of $w(q)$ varies more intensely across the kernel support, a direct discretization would have to be exceptionally well sampled to yield accurate results - meaning the approximation quality for low support radii, sparse or high-discrepancy samplings would suffer\footnote{It might help this intuition to consider the sample positions to be quasi-randomly distributed values $X$. There exist numerous examples of upper bounds on the variance of a function of a random variable in terms of some measure of how intensely that function varies. As an example, consider random values $Z_i:=f(X_i), \mathds{V}[Z]<\infty$ in terms of some function $f:\chi\mapsto\mathds{R}$ for a measurable $\chi$ and independently distributed sample positions $X_i$ from any distribution. If $f$ has the \textit{bounded difference property} $\sup_{x'} \abs{w(x)-w(x')}\leq c$ for a non-negative bound $c$, the Efron-Stein inequality implies $\mathds{V}[Z] \leq \frac{c}{4}$ (see \cite[Boucheron et al.]{bounded-variance} for more such bounds). Since the first derivative of our shape function $\partial_qw(q)$ is more tightly bound than the second $\partial_q^2 w(q)$, achieving a lower $c$, the variance of its sampling has a tighter bound, where lower variance results in better estimator performance.}. Instead, discretizations that rely on the kernel gradient approximation are typically preferred \autocite{tutorial2019}. Amongst them, the following discretization of the Laplace operator is especially useful since for a divergence-free field $\vek{f}(\vek{x})$ it can be used to derive forces that obey momentum conservation: each summand is antisymmetric in $i,j$ and all vectorial terms are projected onto the line spanned by the positions of samples $i$ and $j$ \autocite{tutorial2019}:
+    \equationnamed{Laplace Operator Discretization}{
+      \begin{equation}\label{eq:sph-laplace}
+        \angled{\Laplace\vek{f}_i}_\Delta = 2(d+2)\sum_{j\in\mathcal{N}_i}\frac{m_j}{\rho_j} \frac{\vek{f}_{ij}\cdot\vek{x}_{ij}}{\abs{\vek{x}_{ij}}^2}\nabla_i W_{ij}
+      \end{equation}
+    }
+    where again $d$ is the dimensionality of the problem. With this, all necessary SPH discretizations for the following chapters are available.
+
+\chapter{Incompressible Fluid Solver}\label{chp:fluid}
+  With the SPH method from \autoref{chp:sph}, the tools to discretize and numerically solve the Navier-Stokes equations outlined in \autoref{sec:navier-stokes} are available. This chapter focuses more concretely on implementing such a fluid solver and facing the challenge of ensuring the continuity equation is upheld by an incompressible fluid. This leads to the pressure Poisson equation or PPE for short, which is iteratively solved by the Implicit Incompressible SPH solver of \autoref{sec:iisph}. Multiple source terms and variations of the solver are available, which are discussed in \autoref{sec:alternative-source-terms}.
+    \section{Discretization of the Navier-Stokes Equations}
+    The Navier-Stokes equations for incompressible Newtonian fluids in Lagrangian form that we consider are the continuity equation \autoref{eq:continuity} and momentum equation \autoref{eq:navier-stokes-momentum}. These form a system of equations where the momentum equation provides means of calculating the acceleration $\vek{a}_i = \frac{D\vek{v}_i}{Dt}$ necessary to compute particle trajectories using Newton's second law, while the continuity equation can be seen as a constraint on the former \autocite{tutorial2019}, ensuring incompressibility. Firstly, recall the momentum equation for some particle $i$:
+    \begin{equation}
+      \underbrace{\vek{a}_i  \vphantom{\frac{1}{\rho_i}\nabla}}
+        _{\text{total acceleration }}=
+      \underbrace{-\frac{1}{\rho_i}\nabla p_i}
+        _{\text{pressure acceleration }\vek{a}_i^p} + 
+      \underbrace{\nu\Laplace\vek{v}_i  \vphantom{\frac{1}{\rho_i}\nabla}}
+        _{\text{viscosity acceleration }\vek{a}_i^\nu}+
+      \underbrace{\vek{b}^{ext} \vphantom{\frac{1}{\rho_i}\nabla}}
+        _{\text{external accelerations eg. }\vek{g}}
+    \end{equation}
+    Each of these terms can now be discretized using the SPH formulas from \autoref{chp:sph}. For previously discussed reasons, the viscous term may be approximated in a symmetric and accurate fashion using the discrete Laplace operator as defined in \autoref{eq:sph-laplace}:
+    \begin{equation}\label{eq:discrete-viscous}
+      \angled{\nu\Laplace\vek{v}_i}_\Delta = \nu\angled{\Laplace\vek{v}_i}_\Delta = 2\nu(d+2)\sum_{j\in\mathcal{N}_i}\frac{m_j}{\rho_j} \frac{\vek{v}_{ij}\cdot\vek{x}_{ij}}{\abs{\vek{x}_{ij}}^2}\nabla_i W_{ij}
+    \end{equation}
+    Since viscous forces tend to be dominated by pressure forces for large-scale, low viscosity or high-Reynolds simulations as this report is subject to, the pressure acceleration is the major contributor to the particles' momenta, making the symmetric formula in \autoref{eq:sph-symmetric} a robust choice to obtain physically accurate results:
+    \begin{equation}\label{eq:discrete-pressure}
+      \angled{-\frac{1}{\rho_i}\nabla p_i}_\parallel 
+      = -\frac{1}{\rho_i}\angled{\nabla p_i}_\parallel 
+      = -\sum_{j\in\mathcal{N}_i} m_j \br{\frac{p_i}{\rho_i^2} + \frac{p_j}{\rho_j^2}} \nabla_iW_{ij}
+    \end{equation}
+    The external accelerations $\vek{b}^{ext}$ in this case are simply the gravitational acceleration $\vek{g}$ with $\abs{\vek{g}}=9.81\sfrac{\si{\meter}}{\si{\second}^2}$. 
+
+    The density $\rho_i$ in the above approximations is a scalar quantity and can be discretized using the standard SPH sum from \autoref{eq:sph-sum}:
+    \begin{align}
+      \angled{\rho_i}  
+      = \sum_{j\in\mathcal{N}_i} \frac{m_j}{\rho_j} \rho_j W_{ij} 
+      = \sum_{j\in\mathcal{N}_i} m_j W_{ij} 
+    \end{align}
+
+    Since the mass $m_i$ is set at the start of the simulation, $\nu,\vek{g}$ are given and initial $\vek{x}_i, \vek{v}_i$ are known, the only quantity in the momentum equation yet to be accounted for is the pressure field $p$. The system could be closed by employing a state equation relating the pressure directly to the density field using some stiffness parameter $k$ through the ideal gas equation $p=k\rho$ \autocite{müller-2003}, the Murnaghan equation of state \autocite{murnaghan-eos} as used in Weakly Compressible SPH \autocite{wcsph} $p=k\br{\br{\sfrac{\rho}{\rho_0}}^\gamma-1}$ or similar equations of state. Since for the incompressible fluids simulated in this report the constraints imposed by the continuity equation must be strongly enforced, pressure is instead computed iteratively by solving a pressure Poisson equation or PPE as outlined in \autoref{sec:iisph}.
+
+    In the following, quantities $f_i$ will generally refer to the SPH-discretized fields for brevity.
+
+    \subsubsection*{Time discretization}
+    After spatial discretization using the SPH scheme, the second order partial differential equation \autoref{eq:navier-stokes-momentum} is turned into an ordinary differential equation \autocite{tutorial2019} that must be discretized in time. 
+    % Equipped with an initial state $\{\forall i:\br{\vek{x}_i(t_0),\vek{v}_i(t_0),m_i(t_0)}\}$ that is assumed to be a valid state of the fluid, as well as the discrete momentum equation to calculate accelerations $\vek{a}_i(t)$ with, numerical time integration schemes can be used to solve the equation of motion and propagate the solution forwards in time.
+
+    For this purpose, time is discretized into time steps $\Delta t$ and a numerical integration scheme is applied to obtain particle trajectories by updating particle positions and velocities. In Computer Graphics literature, the most prevalent scheme \autocites{tutorial2019}{wcsph}{iisph}{iisph-flip}{dfsph} to this end is symplectic or semi-implicit Euler time integration:
+    \begin{align}
+      \vek{v}(t+\Delta t) &= \vek{v}(t) + \Delta t \vek{a}(t)\\
+      \vek{x}(t+\Delta t) &= \vek{x}(t) + \Delta t \vek{v}(t+\Delta t)
+    \end{align}
+
+    There is a trade-off in choosing a time step size: large time steps mean more progress per solver step and can lead to greater efficiency, while time steps that are too large might lead to instability and can actually cause lower overall performance especially for iterative solvers, as will be discussed later. A common upper bound on $\Delta t$ is the Courant-Friedrichs-Lewy or CFL condition, which states that particles should not move further than some fraction $\lambda\in\left]0,1\right]$ of their size or spacing $h$ within one time step, which for a global adaptive time step size implies \autocite{tutorial2019}:
+    \begin{equation}\label{eq:cfl-condition}
+      \Delta t \leq \lambda \frac{h}{\max_i \abs{\vek{v}_i}}
+    \end{equation}
+    with a common choice \autocites{dfsph}{monaghan92} being $\lambda=0.4$. Alternative formulations based on the maximum accelerating forces \autocites{monaghan92}{time-adaptive-sph} or more elaborately derived formulas that differ per kernel function and pressure solver \autocite{optimal-timestep} exist.
+
+
+    \subsubsection*{Initial conditions}
+    The numerical time integration scheme propagates a solution to the governing equations forwards in time, calculating a new valid state of the fluid at $t+\Delta t$ from a current one at time $t$. To seed this recursion, an initial state at $t_0$ must be provided. Perhaps the simplest and most common method of creating such an initial state is to define a volume filled with liquid in the simulation domain and sample it with fluid particles on a regular, square grid with spacing $h$, initial zero velocities, and a uniform rest volume $V_0=\sfrac{1}{h^d}$, or equivalently mass $m_0 = \sfrac{\rho_0 }{h^d}$ in $d$ dimensions. This method poses two challenges in particular: one is sampling an arbitrary fluid volume, the other is preventing artefacts due to the anisotropic, regular sampling and ensuring that the initial stages of the simulation run smoothly. 
+
+    \begin{itemize}
+      \item  The first problem of sampling some closed volume with fluid particles is trivial when that volume is a box. More generally, a watertight mesh that bounds the fluid volume can be provided, where candidate fluid particle positions are sampled on a regular grid of spacing $h$ within the axis-aligned bounding box of said mesh. For each such candidate position, since the mesh is watertight, a single ray cast operation is sufficient to determine whether the position is within the fluid volume or not: according to the Jordan Curve theorem, if any ray originating at the candidate position intersects the bounding mesh an odd number of times, the point lies within the volume \autocite{point-in-polygon} and a fluid particle is instantiated, otherwise the candidate is discarded\footnote{The implementation of this report uses the \texttt{trimesh.ray.ray\_pyembree.RayMeshIntersector} implementation of a ray cast operator \autocite{trimesh}}. Additionally, all candidate positions closer than $h$ to a boundary particle as described in \autoref{sec:boundary} can be discarded to prevent boundary penetration and unnaturally high pressure values at $t_0$.
+      \item The second problem may be alleviated by applying a jitter on initial positions in conjunction with non-uniform particle masses \autocite{labcourse}. Sampling particles of uniform mass causes a density gradient due to particle deficiency towards the boundary of the fluid volume, which can in turn result in an erroneous pressure gradient that causes the fluid to expand towards the boundary, causing an 'explosion'. The mass of each particle can instead be chosen such that uniform rest density $\rho_0$ is achieved everywhere at $t_0$ by assigning a higher rest volume to particles at boundaries, ensuring $\forall i: \rho_i(t_0)=\rho_0\Longrightarrow p_i(t_0)=0$. It is easy to see that this can be implemented in a manner consistent with the employed SPH density approximation by iterating:
+      \item \begin{align}
+        m_i^0 &= \frac{1}{h^d}\\
+        \angled{\rho_i}^l &\gets \sum_{j\in\mathcal{N}_i} m_j^l W_{ij} \\
+        m_i^{l+1} &\gets \frac{1}{2} m_i^l + \frac{1}{2} \br{m_i^l + \frac{\rho_0}{\angled{\rho_i}^l}}
+      \end{align}
+      until convergence, which in this implementation was defined as when the average density error $\frac{1}{N}\sum_{i}\rho_i - \rho_0$ changes by less than $10^{-10}\frac{\si{\kg}}{\si{\meter}^3}$ compared to the previous iteration. Stricter bounds are unproblematic since the cost is a one-off preprocessing computation. Slow convergence can be seen as an indicator for an ill-defined scene specification. 
+
+      This initialization to rest density enables another possible improvement in the form of jittered initial positions. A regular grid in conjunction with a kernel with support radius $\hbar$ that is an integer multiple of the grid spacing $h$ was found to be exceptionally prone to aliasing artefacts in the initial stages of simulation. Even just a jitter of $\overrightarrow{\Delta x} \sim 0.01h\cdot\mathcal{N}\br{\vek{\mu}=\vek{0}, \vek{\sigma}=\vek{1}}$ was found in this implementation to relieve numerical issues and anisotropic behaviour, while the uniform density initialization prevents the jitter from resulting in erroneous initial pressure forces. Slightly non-uniform particle masses are also suspected to persistently improve the amorphousness of the particle sampling, reducing numerical viscosity \autocite{labcourse}.
+    \end{itemize}
+   
+
+    \section{Implicit Incompressible SPH}\label{sec:iisph}
+    
+
+    \newpage
+    \section{Alternative Source Terms and Variations}\label{sec:alternative-source-terms}
+\chapter{Weakly Coupled Rigid Bodies}\label{chp:rigid}
+    \section{Versatile and Robust Boundary Particles}\label{sec:boundary}
+    \section{Mass Moments of Triangular Meshes}
+    \section{Rigid Body Kinematics}
+\chapter{Visualization}\label{chp:visualization}
+    \section{Spray, Foam and Bubble Generation}
+    \section{Rendering}
+\chapter{Analysis}\label{chp:analysis}
+    \section{Solver Convergence}
+    \section{Source Terms and Stability}
+    \section{Performance Scaling}
+
+\begin{appendices}
+    \chapter{Fixed Radius Neighbour Search}
+    There exist numerous methods for implementing the computation of the neighbour sets $\mathcal{N}_i = \{j : \abs{\vek{x}_{ij}}<\hbar\}$ referred to in \autoref{sec:sph-discretization}. In this implementation, a GPU-friendly index sort based on counting sort was implemented as an implicit representation of a uniform grid to speed up neighbour computation, following the description of \autocite[Hoetzlein]{hoetzlein-rama-counting-sort}. 
+
+    It is apparent that a na\"ive neighbour search incurrs a cost on the order of $\mathcal{O}\br{N^2}$ in the number $N$ of particles, where each of the (ordered) pairs $i,j$ is considered and included in the set based on the predicate $\abs{\vek{x}_{ij}}<\hbar$. Instead, space may be partitioned into a uniform, axis-aligned grid of cell size $\hbar$, such that for any particle $i$ in $d$ dimensions, only the particles within the $3^d$ grid cells immediately adjacent to the grid cell in which $i$ resides have to be considered, reducing the computational complexity to $\mathcal{O}(MN)$ for compactly supported kernels $\hbar<\infty$ with at most $M$ particles per grid cell\autocite{tutorial2019}. 
+    
+    It should be noted that an efficient and convenient, explicit uniform grid can be constructed in the Taichi language directly using \texttt{pointer}, \texttt{bitmasked}, \texttt{hashed} and \texttt{dynamic} nodes to create a tree structure that is compiled to behave like a simple 3-dimensional field of grid cells, which contain a list of particle indices, as outlined in \cite[this paper]{taichi-sparse}. While such an implementation yielded comparable results to the method described in the following and could have been further tuned, it was superseded in this instance by a method more common in the literature surrounding the problem at hand, which relies on no ad-hoc parameters specific to the simulation domain or implementation.
+
+    \subsubsection*{Construction}
+    Firstly,  the grid cell a particle $i$ resides in is computed as \autocite{compressed-neighbour-lists}:
+    \begin{equation}
+      c(x_i) =  \left\lfloor\frac{x-x_{min}}{\hbar}\right\rfloor
+    \end{equation}
+    which can be point-wise lifted to a vectorial function $(k,l,m)^T = \vek{c}\br{\vek{x}_i}$ using the point $\vek{x}_{min}$ that defines the lowest extent of the axis-aligned bounding box of the simulation domain across each axis, with $(x_{max}, y_{max}, z_{max})^T = \vek{x}_{max}$ defined analogously. 
+    
+    The domain is discretized into a uniform grid that can be represented by a linear, one dimensional array using a space-filling curve. While Morton codes are a popular choice \autocite{compressed-neighbour-lists} for ensuring that spatial proximity is mirrored by proximity in memory, improving cache coherency and reducing scattered reads \autocite{hoetzlein-rama-counting-sort}, the XYZ curve or natural order was chosen instead since it guarantees that any neighbour search results in exactly $3^{d-1}$ coherent sections of memory to be read, simplifying an efficient implementation without use of a BigMin-LitMax algorithm \autocite{bigminlitmax} that a Z-order curve would necessitate.
+    
+    The index can be flattened into a one-dimensional index using the XYZ curve:
+    \begin{equation}\label{eq:counting-sort-xyz}
+      I\br{\br{k,l,m}^T} = k + l\cdot K + m\cdot LM
+    \end{equation}
+    where $K=c(x_{max})+1, L=c(y_{max})+1, M=c(z_{max})+1$ are the  number of grid cells along the x,y and z-axis respectively. $I$ now acts as an index into a one-dimensional array of size $N_{grid} = K\cdot L\cdot M$. The remainder of the construction is performed as follows:
+    \begin{enumerate}
+      \item Let \texttt{indices} be an array of size $N$ representing the one-dimensional cell index of each particle and \texttt{counts} be an array of size $N_{grid}$ representing the number of particles in each cell.
+
+      With one parallel loop over particles $i$, the cell index $I\br{\vek{c}(\vek{x}_i)}$ of each particle can be computed and saved to the $i$-th entry of \texttt{indices}, while the $I\br{\vek{c}(\vek{x}_i)}$-th entry of \texttt{counts} is simultaneously incremented using an atomic add operation.
+      \item A parallel exclusive prefix sum or prescan of the particle counts per cell can then be performed, yielding an array \texttt{counts}$_<$ of size $N_{grid}$ of cumulative particle counts of all cells with strictly lower indices than the cell under consideration. In Taichi, a work-efficient and optimized parallel inclusive prefix sum that avoids bank conflicts \autocite{parallel-prefix-scan} and makes use of \autocite[Blelloch scans]{blelloch-scans} is already implemented. An inclusive prefix sum or scan can be converted to a prescan by point-wise subtracting \texttt{counts}.
+      \item Finally, a counting sort can be performed, yielding an array \texttt{sorted} of size $N$ representing the particle indices stored in the XYZ-order of the cells they appear in.
+      
+      This is done by looping over all particles $i$ in parallel again, this time storing the particle index $i$ in \texttt{sorted} at the position calculated by looking up the cumulative particle count of cells with lesser indices than the cell of $i$ in $\texttt{counts}_<$ and adding the result of atomically decrementing the particle count in the cell of $i$ from a copy of \texttt{count}
+    \end{enumerate}
+    This algorithm is outlined in Algorithm \ref{alg:counting-sort-construction}
+
+    \begin{algorithm}
+      \caption{Counting Sort-based Uniform Grid Construction}
+      \label{alg:counting-sort-construction}
+      \begin{algorithmic}[1]
+        \Phase{Compute Indices and Counts}
+        \For{$i \in \mathds{N}_0^{N-1}$ in parallel}
+          \State Compute index $I_i \gets I\br{\vek{c}\br{\vek{x}_i}}$\Comment{XYZ curve of \autoref{eq:counting-sort-xyz}}
+          \State $\texttt{indices}\left[i\right] \gets I_i$
+          \State $\texttt{counts}\left[I_i\right] \gets \texttt{counts}\left[I_i\right] + 1$\Comment{atomically increment}
+        \EndFor
+        
+        \Phase{Exclusive Prefix Sum}
+        \State Compute $\texttt{counts}_<$ from parallel prescan of $\texttt{counts}$\Comment{See \autocite[Harris et al.]{parallel-prefix-scan}}
+    
+        \Phase{Counting Sort}
+        \For{$i \in \mathds{N}_0^{N-1}$ in parallel}
+        \State $I_i \gets \texttt{indices}\left[ i \right] $
+        \State $o_1 \gets \texttt{counts}_<\left[I_i \right]$\Comment{offset due to previous cells}
+        \State $o_2,  \texttt{counts}\left[ I_i\right] \gets \texttt{counts}\left[I_i\right] - 1 $\Comment{offset within cell, atomically decrement!}
+        \State $\texttt{sorted}\left[o_1 + o_2 - 1\right] \gets i$
+        \EndFor
+      \end{algorithmic}
+    \end{algorithm}
+
+    \subsubsection*{Query}
+    Using the array of sorted particle indices, the index function $I$ and the counts of particles per cell as well as its prefix, all particles in a given cell can be queried in constant time. For a particle in cell $I_i$, all $3^d$ surrounding cells are queried. For each such surrounding cell with index $I_j$, the first particle in that cell has the index $\texttt{sorted}[\texttt{counts}_<]$ and the remaining particles in the same cell are then $\texttt{counts}[I_j]$ subsequent indices. 
+
+    In fact, one optimization due to the use of the XYZ curve is that to find the neighbours of a particle in cell $I(k,l,m)$ in three dimensions, only the first particle in $I(k-1, l, m)$ has to be found, after which the next $\sum_{i=-1}^{i=1}\texttt{counts}[I(k-i,l,m)]$ particles necessary to complete the query along the x-axis lie subsequent in memory, necessitating only $9$ coherent sections of memory to be read instead of $27$ in the worst case.
+
+    \subsubsection*{Discussion}
+    The algorithm shown \autocite{hoetzlein-rama-counting-sort} is simple, elegant, can achieve high performance and is very much suited for massively parallel hardware. One disadvantage however, is that the entire simulation domain is represented, which is a limitation compared to data structures that can more easily adapt to infinite domains and consume less memory for very sparsely filled domains, such as compact hashing \autocites{tutorial2019}{compressed-neighbour-lists}. Since the explicit representation is small, with only a few 32bit numbers stored per grid cell, this was not found to have a noticeable impact in this instance.
+
+    The simulation bounds $\vek{x}_{min},\vek{x}_{max}$ must be known for the XYZ-curve to be applicable in the manner outlined here. In the implementation, the boundaries of the simulation domain are strictly enforced, such that $\vek{x}_i$ is guaranteed to lie in the axis aligned bounding box spanned by $\vek{x}_{min},\vek{x}_{max}$. A grid with two additional grid cells along each axis in each the positive and negative directions is then used, such that bound checks are unnecessary and branches in the very hot code path of the query procedure are avoided.
+    
+    In a simulation using structure-of-arrays data layouts, as is common in high-performance applications, particle attributes $\vek{x}_i, \vek{v}_i, m_i$ etc. can be re-sorted to restore memory coherency and make particles that are likely to be neighbours likely to be adjacent in memory, leading to less cache misses and better performance. One advantage of this sorting-based approach is that the $\texttt{sorted}$ buffer is computed for neighbourhood computations and can be reused at no additional cost to perform such a resorting along the space-filling curve.
+
+
+
+\end{appendices}
+
+\printbibliography[
+  heading=bibintoc,
+  title={Bibliography}
+]
+\end{document}
