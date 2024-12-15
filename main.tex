@@ -556,9 +556,42 @@ Once the fluid solver is completed, including one-way coupling to boundaries as 
     \newpage
     \section{Alternative Source Terms and Variations}\label{sec:alternative-source-terms}
 \chapter{Weakly Coupled Rigid Bodies}\label{chp:rigid}
+    The fluid solver from \autoref{chp:fluid} is not quite complete without discussing the boundary conditions within which the mixed initial-boundary value problem is solved\autocite{tutorial2019}. A versitile method for discretizing boundary objects in a manner consistent with the SPH discretization of the fluid is discussed in \autoref{sec:boundary} \autocite{versatile-boundary-akinci}. While this already realizes one-way coupling of the fluid to a static boundary, a rigid body solver has to be developed and two-way coupled to the fluid solver to achieve interacting rigids and fluids. The prerequisite mass moments are discussed in \autoref{sec:mass-moments}, which are then used to implement a solver for rigid body kinematics in \autoref{sec:rigid-bodies}. Note that while fluids and rigids then interact, more challenging interactions such as rigid-rigid contacts with accurate friction that are an active area of research at time of writing \autocite{monolithic-rigids-timo} are not handled in this report.
+
     \section{Versatile and Robust Boundary Particles}\label{sec:boundary}
-    \section{Mass Moments of Triangular Meshes}
-    \section{Rigid Body Kinematics}
+    %Various forces act upon a fluid when it is in contact with the surface of a boundary, from pressure forces that enforce non-penetration of the boundary over viscous forces depending on whether slip-, no-slip or other conditions are modelled and other forces such as the adhesion that results in capillary action, which are neglected in this instance. 
+
+    A common idea in modelling boundary interactions in SPH is to discretize the boundary into particles and extend the SPH sums from \autoref{chp:sph} to include such boundary particles, which are treated in much the same way as fluid particles. This keeps the discretization of the governing equations consistent between fluid and boundary particles, using pressure forces of the incompressible fluid to guarantee non-penetration of the boundary while viscous forces or the absence thereof can realize slip or no-slip boundary conditions. 
+
+    In order to extend the SPH sums over boundary particles, the quantites $m_k, \vek{x}_k $ and $ \vek{v}_k$ must be known for all boundary particles $k$. While $\vek{v}_k$ is zero for static boundaries and can be computed as outlined in \autoref{sec:rigid-bodies} otherwise, the remaining two quantities highlight two challenges in implementing such a boundary: the size of the boundary particles, which equates to their mass $m_k$, and the sampling of the boundary domain, which yields the $\vek{x}_k$.
+
+    \subsubsection*{Sampling the boundary}
+    As will be outlined in the following, a single layer of non-uniformly distributed boundary particles on the surface of the boundary are sufficient to ensure accurate fluid-boundary interactions. This is helpful, since thin shells and complex triangular meshes should be able to be represented, which is generally not trivial or even possible when multiple layers of particles or particles of uniform size must be used. Instead, a non-uniform but low-discrepancy sampling of the boundary's surface is sought in this instance.
+
+    Firstly, an input triangular mesh representing an arbitrary boundary geometry is approximated by a \emphasis{watertight manifold} with vertices that are roughly uniformly distributed across the surface using the method outlined by \autocite[Huang et al.]{mesh-watertight-manifold}. This method represents the geometry using an octree and reconstructs it by isosurface extraction before projecting the newly created vertices onto the original mesh to improve accuracy \autocite{mesh-watertight-manifold}.
+
+    The resulting watertight manifold, while retaining the shape of the geometry as well as possible, amongst other desirable properties enables the notion of distance of points across the mesh to be sensible. Since the mesh is now a manifold, the distance between two points that are not on the same triangle can be calculated by taking the mesh topology into account, since only exactly two triangles in the mesh share a single edge across which the shortest path between two points can be unambiguously defined. This enables sampling techniques on the manifold that guarantee minimum or maximum distances between points, such that low-discrepancy or blue noise samplings can be found that ensure that boundary particles are evenly spread across the mesh but do not leave holes in the mesh for the fluid to penetrate.
+
+    In this instance, \emphasis{Poisson disk sampling} was chosen as such a sampling technique. It guarantees that points are at least some radius $r$ according to some distance metric apart by, for example \autocite{fast-poisson-disk-sampling}, repeatedly sampling the spherical annulus between $r$ and $2r$ about some point in the sample set and adding points to the set that are no less than $r$ away from any other point in the set, until the entire surface is sampled. This can be done efficiently in $\mathcal{O}(N)$ in the number $N$ of points in the final sampling using auxillary datastructures \autocite{fast-poisson-disk-sampling}. 
+
+    Both the Poisson disk sampling and resampling of the mesh as a watertight manifold are implemented in the \textit{Point Cloud Utils} library that was employed in the implementation discussed in this report \autocite{pcu}.
+
+    \subsubsection*{Boundary particles' mass}
+    With the boundary particles' positions sampled on the boundary surface according to a blue noise distribution, a method for determining the effective mass of each boundary particle as it exerts forces upon a fluid particle is required to integrate the boundary formulation into the SPH sums in \autoref{sec:sph-discretization}. As seen in \autoref{chp:sph}, the SPH sum approximates an integral over field quantities, which can be split into an integral over the fluid domain $\Omega_{fl}$ and the boundary $\Omega_{bdy}$, which for the purpose of handling contact forces as pressure forces using the fluid solver can be assumed to be of the rest densiy $\rho_0$ of the fluid under consideration. Note that in this instance $\rho_0$ is fixed, for multi-phase flows it can have differing values and in any case it is distinct from the actual mass density of the material, such as wood, stone or steel, being modelled by the boundary $\Omega_{bdy}$, which instead influences the rigid body kinematics described in \autoref{sec:rigid-bodies}. 
+
+    For the density of a fluid particle near the boundary, one can write:
+    \begin{align}
+      \rho_i &= \int_{\Omega_{fl}} m_j W_{ij} \,dm_j+  \int_{\Omega_{bdy}} m_k W_{ik} \,dm_j\\
+      &\approx \sum_{j\in\mathcal{N}_i} m_jW_{ij} + \sum_{k\in\mathcal{B}_i} m_k W_{ik}
+    \end{align}
+    where $\mathcal{B}$ is defined anologously to $\mathcal{N}$ but for boundary samples that neighbour particle $i$ and $m_k$ is the effective mass of a boundary particle assuming a boundary of density $\rho_0$ in $\Omega_{bdy}$.
+
+    Since the entire boundary volume is represented by only a single layer of particles at the interface to the fluid, missing contributions and the variance in effective mass due to the non-uniform sampling must be accounted for. It is apparent that accurate values of $m_k$ would have to be a function of the distance to the interface in order to capture the fact that there are more missing boundary contributions if a fluid sample is close to the boundary. In reality, for the small kernel support radius $\hbar=2h$ in the expected fluid particle spacing $h$, a constant approximation that is not distance-dependent is typically deemed as sufficient, altough distance-aware approaches closer to the analytic solution are available.
+
+    
+
+    \section{Mass Moments of Triangular Meshes}\label{sec:mass-moments}
+    \section{Rigid Body Kinematics}\label{sec:rigid-bodies}
 \chapter{Visualization}\label{chp:visualization}
     \section{Spray, Foam and Bubble Generation}
     \section{Rendering}
@@ -630,7 +663,7 @@ Once the fluid solver is completed, including one-way coupling to boundaries as 
     In fact, one optimization due to the use of the XYZ curve is that to find the neighbours of a particle in cell $I(k,l,m)$ in three dimensions, only the first particle in $I(k-1, l, m)$ has to be found, after which the next $\sum_{i=-1}^{i=1}\texttt{counts}[I(k-i,l,m)]$ particles necessary to complete the query along the x-axis lie subsequent in memory, necessitating only $9$ coherent sections of memory to be read instead of $27$ in the worst case.
 
     \subsubsection*{Discussion}
-    The algorithm shown \autocite{hoetzlein-rama-counting-sort} is simple, elegant, can achieve high performance and is very much suited for massively parallel hardware. One disadvantage however, is that the entire simulation domain is represented, which is a limitation compared to data structures that can more easily adapt to infinite domains and consume less memory for very sparsely filled domains, such as compact hashing \autocites{tutorial2019}{compressed-neighbour-lists}. Since the explicit representation is small, with only a few 32bit numbers stored per grid cell, this was not found to have a noticeable impact in this instance.
+    The algorithm shown \autocite{hoetzlein-rama-counting-sort} is simple, elegant, can achieve high performance and is very much suited for massively parallel hardware. One disadvantage however, is that the representation contains arrays that scale with the size of the simulation domain, which is a limitation compared to data structures that can more easily adapt to infinite domains and consume less memory for very sparsely filled domains, such as compact hashing \autocites{tutorial2019}{compressed-neighbour-lists}. Since the explicit representation is small, with only a few 32-bit numbers stored per grid cell, this was not found to have a noticeable impact in this instance.
 
     The simulation bounds $\vek{x}_{min},\vek{x}_{max}$ must be known for the XYZ-curve to be applicable in the manner outlined here. In the implementation, the boundaries of the simulation domain are strictly enforced, such that $\vek{x}_i$ is guaranteed to lie in the axis aligned bounding box spanned by $\vek{x}_{min},\vek{x}_{max}$. A grid with two additional grid cells along each axis in each the positive and negative directions is then used, such that bound checks are unnecessary and branches in the very hot code path of the query procedure are avoided.
     
