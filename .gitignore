@@ -1,4 +1,8 @@
 sources
+*.asy
+main-*
+main.bbl-SAVE-ERROR
+ltex*
 
 ## Core latex/pdflatex auxiliary files:
 *.aux

@@ -52,6 +52,8 @@
 \usepackage{mathtools}
 \usepackage{xfrac} % sfrac for diagonal slashes in fractions
 \usepackage{amsfonts} % math fonts
+\usepackage{amssymb} % more math symbols (supsetneq etc.)
+\usepackage{dbnsymb}
 \usepackage{dsfont} % math fonts
 \usepackage{bbm} % mathbb fonts
 \usepackage{mathrsfs} % fancy swirly font
@@ -283,7 +285,7 @@
     % \contour{black}{\textcolor{white}{Master of Science in Computer Science}}\\
     \begin{figure}[H]
         \centering
-        \includegraphics[width=1\textwidth]{images/0_frame_1478.png}
+        \includegraphics[width=1\textwidth]{images/title2.png}
     \end{figure}
     \vfill
     % \vspace{5.2cm}
@@ -315,14 +317,14 @@ Once the fluid solver is completed, including one-way coupling to boundaries as 
     \section{Navier-Stokes Equations}\label{sec:navier-stokes}
     In order to develop a numerical solver for fluid flow problems, the respective governing equations must first be discussed. In the case of linearly viscous, incompressible fluid flow, the framework of continuum mechanics yields a set of equations called the \emphasis{Navier-Stokes equations}. Since the focus on this report is on the implementation of the solver, these equations are only very concisely outlined in the following and the interested reader is referred to more extensive works such as by \cite[Anderson]{anderson} or a previous report authored by the present writer \autocite{labcourse} for a more thorough derivation.
 
-    \subsubsection*{Lagrangian Continuum Mechanics}
+    \subsubsection{Lagrangian Continuum Mechanics}
     Since the flow problems in question occur not a microscopic scale, such as concerning the interaction of individual molecules, but a macroscopic scale instead, continuum mechanics is a suitable framework for the formulation of the governing equations. It assumes that the fluid is a continuum that is under deformation, wherein field quantities such as density, velocity etc. are convected with continuum elements as they deform, and makes use of the \emphasis{Material derivative} to apply the rules of calculus to these quantities \autocite{anderson}:
     \begin{definition} The material derivative:
       \[\frac{D}{Dt} := \underbrace{\frac{\partial}{\partial t}}_{\textit{local derivative}} + \underbrace{\br{\vek{v}\cdot \nabla}}_{\textit{convective derivative}}\]
     \end{definition}
     The first term represents the local derivative, or instantaneous rate of change of the quantity with respect to the continuum element, while the second describes the rate of change of the quantity at a fixed position due to the deformation of the continuum and consequently the convection of the continuum element with the velocity field $\vek{v}$. The frame of reference for each continuum element that is convected along with the velocity field is precisely the one in which the second term becomes zero, yielding the Lagrangian or so-called non-conservation form of the equations instead of the Eulerian form of the problem in which a static frame of reference is chosen \autocite{anderson}. We choose the Lagrangian representation in the following since the continuum itself is later discretized into particles that are advected with the flow and only quantities at particle positions will be of interest. An Eulerian discretization of the space within which the continuum exists could be chosen instead, but may be less suitable in application to free-surface flows with complex and dynamic boundary geometry \autocite{tutorial2019}.
 
-    \subsubsection*{Governing equations}
+    \subsubsection{Governing equations}
     The governing equations can be derived from laws of conservation applied to the continuum. The first such conservation law is the \emphasis{conservation of mass} $\frac{Dm}{Dt}=0$, which can be transformed using either the Reynolds Transport theorem or the divergence theorem \autocite{labcourse} into the continuity equation of the form:
     \equationnamedbox{Continuity Equation}{
       \begin{equation}\label{eq:continuity}
@@ -371,7 +373,7 @@ Once the fluid solver is completed, including one-way coupling to boundaries as 
     
     Smoothed Particle Hydrodynamics, or SPH for short, is an interpolation scheme which can be used to reconstruct a continuous and differentiable field from quantities sampled at individual points that each represent some fluid volume, which we refer to as particles. This representation and the SPH scheme allow field quantities to be computed at any point of interest and at particle locations in particular, making it suited for realizing a Lagrangian simulation.
 
-    \subsubsection*{Derivation}
+    \subsubsection{Derivation}
 
     The SPH method can be derived from a relaxation of the unit impulse or Dirac $\delta$ distribution, which is defined as \autocite{signal-processing-falaschi}:
     \equationnamed{Dirac $\delta$-distribution}{
@@ -407,7 +409,7 @@ Once the fluid solver is completed, including one-way coupling to boundaries as 
       \angled{f_i} = \sum_{j\in\mathcal{N}_i} \frac{m_j}{\rho_j} f_j W_{ij} 
     \end{equation}}
 
-    \subsubsection*{Kernel function}
+    \subsubsection{Kernel function}
     The kernel function is parametrized by $\vek{x}_{ij}=\vek{x}_i-\vek{x}_j$ for samples $i,j$ and a kernel support radius $\hbar$. We denote $W_{ij} := W(\vek{x}_{ij},\hbar) $ for short. For the approximation to be consistent, $W$ must converge to $\delta$ as the support radius goes to zero, meaning the kernel must fulfill \autocite{tutorial2019}:
     \begin{align}
       \int_\Omega W(\vek{x}_{ij},\hbar) &= 1 &\textit{normalization}\\
@@ -451,7 +453,7 @@ Once the fluid solver is completed, including one-way coupling to boundaries as 
       \caption{The shape function $w(q)$ that defines the Cubic Spline kernel function and its first derivative are plotted for all values of $q\in[0,1]$ that yield non-zero $w(q)$. The function is compactly supported. Since the kernel function $W$ is spherically symmetric, this one-dimensional function of the scaled distance is sufficient to describe $W$ in any dimensionality, only the scaling factors $\alpha$ have to be adjusted.}\label{fig:cubic-spline}
     \end{figure}
 
-    \subsubsection*{Differential Operators}
+    \subsubsection{Differential Operators}
     The gradient of the kernel function can be used to directly to approximate differential operators such as gradient, divergence and rotation on vector fields, the least straightforward example amongst them perhaps being:
     \begin{equation}
       \angled{\nabla \vek{f}_i}_\otimes = \sum_{j\in\mathcal{N}_i} \frac{m_j}{\rho_j} \vek{f}_j \otimes \nabla W_{ij}
@@ -481,7 +483,7 @@ Once the fluid solver is completed, including one-way coupling to boundaries as 
 
 \chapter{Incompressible Fluid Solver}\label{chp:fluid}
   With the SPH method from \autoref{chp:sph}, the tools to discretize and numerically solve the Navier-Stokes equations outlined in \autoref{sec:navier-stokes} are available. This chapter focuses more concretely on implementing such a fluid solver and facing the challenge of ensuring the continuity equation is upheld by an incompressible fluid. This leads to the pressure Poisson equation or PPE for short, which is iteratively solved by the Implicit Incompressible SPH solver of \autoref{sec:iisph}. Multiple source terms and variations of the solver are available, which are discussed in \autoref{sec:alternative-source-terms}.
-    \section{Discretization of the Navier-Stokes Equations}
+    \section{Discretization of the Navier-Stokes Equations}\label{sec:sph-navier-stokes}
     The Navier-Stokes equations for incompressible Newtonian fluids in Lagrangian form that we consider are the continuity equation \autoref{eq:continuity} and momentum equation \autoref{eq:navier-stokes-momentum}. These form a system of equations where the momentum equation provides means of calculating the acceleration $\vek{a}_i = \frac{D\vek{v}_i}{Dt}$ necessary to compute particle trajectories using Newton's second law, while the continuity equation can be seen as a constraint on the former \autocite{tutorial2019}, ensuring incompressibility. Firstly, recall the momentum equation for some particle $i$:
     \begin{equation}
       \underbrace{\vek{a}_i  \vphantom{\frac{1}{\rho_i}\nabla}}
@@ -506,7 +508,7 @@ Once the fluid solver is completed, including one-way coupling to boundaries as 
     The external accelerations $\vek{b}^{ext}$ in this case are simply the gravitational acceleration $\vek{g}$ with $\abs{\vek{g}}=9.81\sfrac{\si{\meter}}{\si{\second}^2}$. 
 
     The density $\rho_i$ in the above approximations is a scalar quantity and can be discretized using the standard SPH sum from \autoref{eq:sph-sum}:
-    \begin{align}
+    \begin{align}\label{eq:discrete-density}
       \angled{\rho_i}  
       = \sum_{j\in\mathcal{N}_i} \frac{m_j}{\rho_j} \rho_j W_{ij} 
       = \sum_{j\in\mathcal{N}_i} m_j W_{ij} 
@@ -516,7 +518,7 @@ Once the fluid solver is completed, including one-way coupling to boundaries as 
 
     In the following, quantities $f_i$ will generally refer to the SPH-discretized fields for brevity.
 
-    \subsubsection*{Time discretization}
+    \subsubsection{Time discretization}
     After spatial discretization using the SPH scheme, the second order partial differential equation \autoref{eq:navier-stokes-momentum} is turned into an ordinary differential equation \autocite{tutorial2019} that must be discretized in time. 
     % Equipped with an initial state $\{\forall i:\br{\vek{x}_i(t_0),\vek{v}_i(t_0),m_i(t_0)}\}$ that is assumed to be a valid state of the fluid, as well as the discrete momentum equation to calculate accelerations $\vek{a}_i(t)$ with, numerical time integration schemes can be used to solve the equation of motion and propagate the solution forwards in time.
 
@@ -533,7 +535,7 @@ Once the fluid solver is completed, including one-way coupling to boundaries as 
     with a common choice \autocites{dfsph}{monaghan92} being $\lambda=0.4$. Alternative formulations based on the maximum accelerating forces \autocites{monaghan92}{time-adaptive-sph} or more elaborately derived formulas that differ per kernel function and pressure solver \autocite{optimal-timestep} exist.
 
 
-    \subsubsection*{Initial conditions}
+    \subsubsection{Initial conditions}\label{subsec:initial-conditions}
     The numerical time integration scheme propagates a solution to the governing equations forwards in time, calculating a new valid state of the fluid at $t+\Delta t$ from a current one at time $t$. To seed this recursion, an initial state at $t_0$ must be provided. Perhaps the simplest and most common method of creating such an initial state is to define a volume filled with liquid in the simulation domain and sample it with fluid particles on a regular, square grid with spacing $h$, initial zero velocities, and a uniform rest volume $V_0=\sfrac{1}{h^d}$, or equivalently mass $m_0 = \sfrac{\rho_0 }{h^d}$ in $d$ dimensions. This method poses two challenges in particular: one is sampling an arbitrary fluid volume, the other is preventing artefacts due to the anisotropic, regular sampling and ensuring that the initial stages of the simulation run smoothly. 
 
     \begin{itemize}
@@ -542,7 +544,7 @@ Once the fluid solver is completed, including one-way coupling to boundaries as 
       \item \begin{align}
         m_i^0 &= \frac{1}{h^d}\\
         \angled{\rho_i}^l &\gets \sum_{j\in\mathcal{N}_i} m_j^l W_{ij} \\
-        m_i^{l+1} &\gets \frac{1}{2} m_i^l + \frac{1}{2} \br{m_i^l + \frac{\rho_0}{\angled{\rho_i}^l}}
+        m_i^{l+1} &\gets m_i^l \cdot \frac{\rho_0}{\angled{\rho_i}^l}\label{eq:initializing-fluid-rest-density}
       \end{align}
       until convergence, which in this implementation was defined as when the average density error $\frac{1}{N}\sum_{i}\rho_i - \rho_0$ changes by less than $10^{-10}\frac{\si{\kg}}{\si{\meter}^3}$ compared to the previous iteration. Stricter bounds are unproblematic since the cost is a one-off preprocessing computation. Slow convergence can be seen as an indicator for an ill-defined scene specification. 
 
@@ -556,41 +558,210 @@ Once the fluid solver is completed, including one-way coupling to boundaries as 
     \newpage
     \section{Alternative Source Terms and Variations}\label{sec:alternative-source-terms}
 \chapter{Weakly Coupled Rigid Bodies}\label{chp:rigid}
-    The fluid solver from \autoref{chp:fluid} is not quite complete without discussing the boundary conditions within which the mixed initial-boundary value problem is solved\autocite{tutorial2019}. A versitile method for discretizing boundary objects in a manner consistent with the SPH discretization of the fluid is discussed in \autoref{sec:boundary} \autocite{versatile-boundary-akinci}. While this already realizes one-way coupling of the fluid to a static boundary, a rigid body solver has to be developed and two-way coupled to the fluid solver to achieve interacting rigids and fluids. The prerequisite mass moments are discussed in \autoref{sec:mass-moments}, which are then used to implement a solver for rigid body kinematics in \autoref{sec:rigid-bodies}. Note that while fluids and rigids then interact, more challenging interactions such as rigid-rigid contacts with accurate friction that are an active area of research at time of writing \autocite{monolithic-rigids-timo} are not handled in this report.
+    The fluid solver from \autoref{chp:fluid} is not quite complete without discussing the boundary conditions within which the mixed initial-boundary value problem is solved\autocite{tutorial2019}. A versatile method for discretizing boundary objects in a manner consistent with the SPH discretization of the fluid is discussed in \autoref{sec:boundary} \autocite{versatile-boundary-akinci}. While this already realizes one-way coupling of the fluid to a static boundary, a rigid body solver has to be developed and two-way coupled to the fluid solver to achieve interacting rigids and fluids. The prerequisite mass moments are discussed in \autoref{sec:mass-moments}, which are then used to implement a solver for rigid body kinematics in \autoref{sec:rigid-bodies}. Note that while fluids and rigids then interact, more challenging interactions such as rigid-rigid contacts with accurate friction that are an active area of research at time of writing \autocite{monolithic-rigids-timo} are not handled in this report.
 
     \section{Versatile and Robust Boundary Particles}\label{sec:boundary}
     %Various forces act upon a fluid when it is in contact with the surface of a boundary, from pressure forces that enforce non-penetration of the boundary over viscous forces depending on whether slip-, no-slip or other conditions are modelled and other forces such as the adhesion that results in capillary action, which are neglected in this instance. 
 
     A common idea in modelling boundary interactions in SPH is to discretize the boundary into particles and extend the SPH sums from \autoref{chp:sph} to include such boundary particles, which are treated in much the same way as fluid particles. This keeps the discretization of the governing equations consistent between fluid and boundary particles, using pressure forces of the incompressible fluid to guarantee non-penetration of the boundary while viscous forces or the absence thereof can realize slip or no-slip boundary conditions. 
 
-    In order to extend the SPH sums over boundary particles, the quantites $m_k, \vek{x}_k $ and $ \vek{v}_k$ must be known for all boundary particles $k$. While $\vek{v}_k$ is zero for static boundaries and can be computed as outlined in \autoref{sec:rigid-bodies} otherwise, the remaining two quantities highlight two challenges in implementing such a boundary: the size of the boundary particles, which equates to their mass $m_k$, and the sampling of the boundary domain, which yields the $\vek{x}_k$.
+    In order to extend the SPH sums over boundary particles, the quantities $m_k, \vek{x}_k $ and $ \vek{v}_k$ must be known for all boundary particles $k$. While $\vek{v}_k$ is zero for static boundaries and can be computed as outlined in \autoref{sec:rigid-bodies} otherwise, the remaining two quantities highlight two challenges in implementing such a boundary: the size of the boundary particles, which equates to their mass $m_k$, and the sampling of the boundary domain, which yields the $\vek{x}_k$.
 
-    \subsubsection*{Sampling the boundary}
+    \subsubsection{Sampling the boundary}\label{subsec:sampling-the-boundary}
     As will be outlined in the following, a single layer of non-uniformly distributed boundary particles on the surface of the boundary are sufficient to ensure accurate fluid-boundary interactions. This is helpful, since thin shells and complex triangular meshes should be able to be represented, which is generally not trivial or even possible when multiple layers of particles or particles of uniform size must be used. Instead, a non-uniform but low-discrepancy sampling of the boundary's surface is sought in this instance.
 
     Firstly, an input triangular mesh representing an arbitrary boundary geometry is approximated by a \emphasis{watertight manifold} with vertices that are roughly uniformly distributed across the surface using the method outlined by \autocite[Huang et al.]{mesh-watertight-manifold}. This method represents the geometry using an octree and reconstructs it by isosurface extraction before projecting the newly created vertices onto the original mesh to improve accuracy \autocite{mesh-watertight-manifold}.
 
     The resulting watertight manifold, while retaining the shape of the geometry as well as possible, amongst other desirable properties enables the notion of distance of points across the mesh to be sensible. Since the mesh is now a manifold, the distance between two points that are not on the same triangle can be calculated by taking the mesh topology into account, since only exactly two triangles in the mesh share a single edge across which the shortest path between two points can be unambiguously defined. This enables sampling techniques on the manifold that guarantee minimum or maximum distances between points, such that low-discrepancy or blue noise samplings can be found that ensure that boundary particles are evenly spread across the mesh but do not leave holes in the mesh for the fluid to penetrate.
 
-    In this instance, \emphasis{Poisson disk sampling} was chosen as such a sampling technique. It guarantees that points are at least some radius $r$ according to some distance metric apart by, for example \autocite{fast-poisson-disk-sampling}, repeatedly sampling the spherical annulus between $r$ and $2r$ about some point in the sample set and adding points to the set that are no less than $r$ away from any other point in the set, until the entire surface is sampled. This can be done efficiently in $\mathcal{O}(N)$ in the number $N$ of points in the final sampling using auxillary datastructures \autocite{fast-poisson-disk-sampling}. 
+    In this instance, \emphasis{Poisson disk sampling} was chosen as such a sampling technique. It guarantees that points are at least some radius $r$ according to some distance metric apart by, for example \autocite{fast-poisson-disk-sampling}, repeatedly sampling the spherical annulus between $r$ and $2r$ about some point in the sample set and adding points to the set that are no less than $r$ away from any other point in the set, until the entire surface is sampled. This can be done efficiently in $\mathcal{O}(N)$ in the number $N$ of points in the final sampling using auxiliary data structures such as a uniform grid \autocite{fast-poisson-disk-sampling}. 
 
     Both the Poisson disk sampling and resampling of the mesh as a watertight manifold are implemented in the \textit{Point Cloud Utils} library that was employed in the implementation discussed in this report \autocite{pcu}.
 
-    \subsubsection*{Boundary particles' mass}
-    With the boundary particles' positions sampled on the boundary surface according to a blue noise distribution, a method for determining the effective mass of each boundary particle as it exerts forces upon a fluid particle is required to integrate the boundary formulation into the SPH sums in \autoref{sec:sph-discretization}. As seen in \autoref{chp:sph}, the SPH sum approximates an integral over field quantities, which can be split into an integral over the fluid domain $\Omega_{fl}$ and the boundary $\Omega_{bdy}$, which for the purpose of handling contact forces as pressure forces using the fluid solver can be assumed to be of the rest densiy $\rho_0$ of the fluid under consideration. Note that in this instance $\rho_0$ is fixed, for multi-phase flows it can have differing values and in any case it is distinct from the actual mass density of the material, such as wood, stone or steel, being modelled by the boundary $\Omega_{bdy}$, which instead influences the rigid body kinematics described in \autoref{sec:rigid-bodies}. 
+    \subsubsection{Boundary particle effective mass}
+    With the boundary particles' positions sampled on the boundary surface according to a blue noise distribution, a method for determining the effective mass of each boundary particle as it exerts forces upon a fluid particle is required to integrate the boundary formulation into the SPH sums in \autoref{sec:sph-navier-stokes}. As seen in \autoref{chp:sph}, the SPH sum approximates an integral over field quantities, which can be partitioned into an integral over the fluid domain $\Omega_{fl}$ and the boundary $\Omega_{bdy}$, which for the purpose of handling contact forces as pressure forces using the fluid solver can be assumed to be of the rest density $\rho_0$ of the fluid under consideration. Note that in this instance $\rho_0$ is fixed, for multiphase flows it can have differing values and in any case it is distinct from the actual mass density of the material, such as wood, stone or steel, being modelled by the boundary $\Omega_{bdy}$, which instead might influence the rigid body kinematics described in \autoref{sec:rigid-bodies}.
 
-    For the density of a fluid particle near the boundary, one can write:
+    For the density of a fluid particle near the boundary, one can write \autocite{density-maps}:
     \begin{align}
-      \rho_i &= \int_{\Omega_{fl}} m_j W_{ij} \,dm_j+  \int_{\Omega_{bdy}} m_k W_{ik} \,dm_j\\
-      &\approx \sum_{j\in\mathcal{N}_i} m_jW_{ij} + \sum_{k\in\mathcal{B}_i} m_k W_{ik}
+      \rho_i &= \int_{\Omega_{fl}} W_{ij} \,dm_j+  \int_{\Omega_{bdy}} W_{ik} \,dm_j\\
+      \angled{\rho_i} &= \sum_{j\in\mathcal{N}_i} m_jW_{ij} + \sum_{k\in\mathcal{B}_i} m_k W_{ik}
     \end{align}
-    where $\mathcal{B}$ is defined anologously to $\mathcal{N}$ but for boundary samples that neighbour particle $i$ and $m_k$ is the effective mass of a boundary particle assuming a boundary of density $\rho_0$ in $\Omega_{bdy}$.
+    where $\mathcal{B}$ is defined analogously to $\mathcal{N}$ but for boundary samples that neighbour particle $i$ and $m_k$ is the effective mass of a boundary particle assuming a boundary of density $\rho_0$ in $\Omega_{bdy}$.
 
-    Since the entire boundary volume is represented by only a single layer of particles at the interface to the fluid, missing contributions and the variance in effective mass due to the non-uniform sampling must be accounted for. It is apparent that accurate values of $m_k$ would have to be a function of the distance to the interface in order to capture the fact that there are more missing boundary contributions if a fluid sample is close to the boundary. In reality, for the small kernel support radius $\hbar=2h$ in the expected fluid particle spacing $h$, a constant approximation that is not distance-dependent is typically deemed as sufficient, altough distance-aware approaches closer to the analytic solution are available.
+    Since the entire boundary volume is represented by only a single layer of particles at the interface to the fluid, missing contributions and the variation in effective mass due to the non-uniform sampling must be accounted for. It is apparent that accurate values of $m_k$ would have to be at least a function of the distance to the interface in order to capture the fact that there are more missing boundary contributions in the kernel support of some fluid particle $i$ if it is close to the boundary. This could be approximated by linearly extending the boundary density field via $m_k = \rho_0 - \frac{\rho_0\cdot \abs{\vek{x}_{ik}}}{\hbar}$ using for example signed distance fields, storing the results on a grid and interpolating them as proposed by \autocite[Koshier and Bender]{density-maps}. Instead, for the small kernel support radius $\hbar=2h$ in the expected fluid particle spacing $h$, a constant approximation that is not distance-dependent can be deemed sufficiently accurate and more efficient, yielding the method of \autocite[Akinci et al.]{versatile-boundary-akinci}.
 
+    With this piece-wise constant model, the effective mass that achieves a boundary domain with density $\rho_0$ is $m_k = \rho_0V_k$ where $V_k$ is the effective volume of the boundary domain represented by particle $k$. This in turn can be computed using the SPH normalization criterion \autoref{eq:normalization-crtieria} implying that $\sum_{l\in\mathcal{B}_k} V_l W_{kl}\overset{!}{=} 1$ ought to hold at any boundary particle $k$ \autocite{versatile-boundary-akinci}. This means that the kernel sum effectively measures the inverse of the volume of a particle given a sampling: if not $1$ but a higher value is obtained, all $V_l$ ought to be correspondingly lower and vice versa, which means \autocite{versatile-boundary-akinci}: 
+    \begin{align}
+      V_k = \frac{m_k}{\rho_0} &\overset{!}{=} \frac{m_k}{\sum_{l\in\mathcal{B}_k} m_l W_{kl}} \approx \gamma_1 \frac{ m_k}{m_k \sum_{l\in\mathcal{B}_k} W_{kl}}\label{eq:boundary-mass-approximation}\\
+      \Longrightarrow m_k &= \gamma_1 \frac{\rho_0}{\sum_{l\in\mathcal{B}_k} W_{kl}}\label{eq:boundary-mass-calculation}
+    \end{align}
+    where the parameter $\gamma_1$ in the approximation can be used to adjust the density contribution per boundary particle for differing kernel support sizes, choosing for example a value that ensures rest density for a regular sampling of a plane, however $\gamma_1=1$ is chosen in this instance. 
+    Since the effective mass is assumed to be independent of distance to the boundary, $m_k$ can be precomputed once and stored for each boundary particle.
     
+    Instead of using the approximation of assuming roughly equal boundary masses in \autoref{eq:boundary-mass-approximation}, the exact equation can be seen as a system of equations and solved for $m_k$ in the same fashion as discussed for initializing fluid particles with rest density in \autoref{eq:initializing-fluid-rest-density}:
+    \begin{align}
+      m_k^0 &= \frac{\rho_0}{\sum_{l\in\mathcal{B}_k} W_{kl}}\\
+      m_k^{l+1} &\gets m_k^l \cdot \frac{\rho_0}{\sum_{l\in\mathcal{B}_k} W_{kl}}\label{eq:boundary-mass-calculation-iterative}
+    \end{align}
+
+    In the implementation, the exact system is solved once initially, using \autoref{eq:boundary-mass-calculation-iterative}, since the one-off cost of the iterative solver is acceptable, but subsequent recalculations of masses due to dynamic boundaries are handled with a single application of the approximate formula \autoref{eq:boundary-mass-calculation} by \autocite[Akinci et al.]{versatile-boundary-akinci} to avoid additional runtime cost.
+    
+    \subsubsection{Recalculating masses}
+    Not all boundaries are static: fluids might also interact with boundary particles representing dynamic rigid bodies simulated as described in \autoref{sec:rigid-bodies} or scripted boundaries, which behave according to some analytically specified equation of motion. In this implementation, scripted boundaries that implement rigid body translations were included, while rotations where neglected, since this limitation greatly simplifies the setting: given two equations $\vek{x}_{cm}(t), \vek{v}_{cm}(t)$, all boundary particles belonging to the same scripted object are shifted from their initial position by exactly $\vek{x}_{cm}(t)$ and all have the same velocity $\vek{v}_{cm}(t)$ at any point $t$ in time. 
+
+    The previously discussed boundary handling can thankfully naturally handle intersecting boundaries. For example, a scripted boundary plane moving sinusoidally to produce waves may intersect a container of water. However, the masses of involved boundary particles might need to be recalculated so that the pressure forces exerted on the fluid by the boundary does not change where boundaries intersect. This is done according to two rules, which in conjunction conservatively estimate the set of boundary particles that need their masses recalculated according to \autoref{eq:boundary-mass-calculation} in each time step:
+    \begin{enumerate}
+      \item All masses of boundary particles belonging to scripted boundary objects are recalculated at every step. While performing the SPH kernel sum in \autoref{eq:boundary-mass-calculation} necessary to do so, all neighbouring particles $l$ have a counter set to 2 if they are static boundary samples.
+      \item All static boundary samples with such a counter value greater than zero have their masses recalculated and the counter decremented.
+    \end{enumerate}
+    This means that not only are the masses of static boundary samples re-evaluated when scripted boundaries intersect them to ensure all boundary particles correctly exert forces on fluids as if they were the same fluid at rest density at all times, but the masses are also re-evaluated once more when a scripted boundary particle has just left the kernel support radius, ensuring correct masses as before. 
+    
+    Note that in the Taichi language used for this implementation, a quantized data type can be used to represent the counter since only 3 bits per boundary particle are required, which can be densely packed to reduce memory usage and possibly improve performance, see \autocite[Hu et al.]{quantized-taichi}
+
+    \subsubsection{Extending the governing equations}
+    With the surfaces of boundary domains sampled using a blue-noise distribution and the effective boundary particle masses $m_k$ calculated such that they can be treated by the pressure solver like a fluid at rest with density $\rho_0$, the SPH discretized governing equations from \autoref{sec:sph-navier-stokes} can be extended to include the boundary domain.
+
+
+    The density computation in \autoref{eq:discrete-density} is straightforward:
+    \begin{equation}\label{eq:discrete-density-boundary}
+      \angled{\rho_i} = \sum_{j\in\mathcal{N}_i} m_j W_{ij} + \sum_{k\in\mathcal{B}_i} m_k W_{ik}
+    \end{equation}
+    The viscosity computation in \autoref{eq:discrete-viscous} remains the same as before. While viscous forces at the boundary can be implemented and the symmetric forces acting on boundary particles can be integrated into the rigid body solver (see \autocite[Akinci et al.]{versatile-boundary-akinci}), slip-conditions were chosen instead in this implementation, since rather inviscid flows at larger scales are investigated.
+
+    Lastly, the pressure computation must be adjusted. \autoref{eq:discrete-pressure} requires a density and pressure value per boundary particle $k$, which are unknown. Since the effective mass $m_k$ was chosen to represent $\rho_0$ in the boundary domain, the rest density $\rho_k\approx\rho_0$ is a reasonable approximation. For choosing a pressure value of a boundary particle, there exist many methods, such as simply mirroring the pressure of the fluid particle under consideration $p_i=p_k$ \autocite{versatile-boundary-akinci}, solving for pressures at boundary particles in the pressure solver explicitly to avoid inconsistent values of $p_k$ for different fluid particles $i$ \autocite{pressure-boundaries}{}, extrapolating the pressure field into the boundary domain using some scheme like \textit{Moving Least Squares} \autocite{mls-pressure-extrapolation}, or simply setting the pressure at boundary particles to zero \autocite{consistent-boundaries}. This choice can have a profound impact on pressure solver convergence and the quality of the resulting pressure field \autocite{consistent-boundaries}. In accordance with recent literature by \autocite[Bender et al.]{consistent-boundaries}, a so-called consistent boundary handling which imposes $p_k=0$ is chosen in this instance, which is exceptionally easy to implement, was found to improve solver stability and yield a reasonably smooth pressure field. It is equivalent to the approach of mirroring pressure values with a weighting of boundary pressure forces by a coefficient $\gamma_2=0.5$ \autocite{tutorial2019}. Using $p_k=0$, some terms in \autoref{eq:discrete-pressure} drop out, leaving the expression:
+    \begin{equation}\label{eq:discrete-pressure-bdy}
+      \vek{a}_i^p = \angled{-\frac{1}{\rho_i}\nabla p_i}_\parallel 
+      = -\sum_{j\in\mathcal{N}_i} m_j \br{\frac{p_i}{\rho_i^2} + \frac{p_j}{\rho_j^2}} \nabla_iW_{ij} -\sum_{k\in\mathcal{B}_i} m_k\frac{p_i}{\rho_i^2} \nabla_iW_{ik}
+    \end{equation}
+    This expression is used to derive the diagonal element in the IISPH solver of \autoref{sec:iisph} using the additional assertion that $\rho_i\overset{!}{=}\rho_j\overset{!}{=}\rho_0$. Since this discretization of $\vek{a}_i^p$ makes use of the symmetric SPH approximation $\angled{\cdot}_\parallel$, one can easily derive the symmetric forces that the fluid particle $i$ exerts on each boundary particle $k$ using Newton's second law as \autocite{versatile-boundary-akinci}:
+    \begin{equation}\label{force-on-bdy}
+      f_{k\leftarrow i} = - m_i \vek{a}_{i\leftarrow k}^p = m_i m_k\frac{p_i}{\rho_i^2} \nabla_iW_{ik}
+    \end{equation}
+    which is used to exert forces and torques upon dynamic rigid bodies in \autoref{sec:rigid-bodies}.
 
     \section{Mass Moments of Triangular Meshes}\label{sec:mass-moments}
+    In order to create a rigid body solver in \autoref{sec:rigid-bodies}, one prerequisite is to know the total mass $M$, volume $V$ and the inertia tensor $I$ of the rigid body being simulated. As an input to this computation, some arbitrary triangular mesh is given, which can be approximated by a watertight manifold using the algorithm discussed in \autoref{subsec:sampling-the-boundary}, which is in turn interpreted as the surface $\partial\Omega_{rigid}$ of some volume $\Omega_{rigid}$ that represents a rigid body of homogeneous density $\rho$. In other words, the mass moments $M$ and $I$ of the closed triangular mesh of $\partial\Omega_{rigid}$ must be computed, which is outlined in the following. Note that mass density moments of the $\Omega_{rigid}$ are defined as a volume integral:
+    \begin{equation}
+      \int_{\Omega_{rigid}} \br{\vek{x}_x}^p \br{\vek{x}_y}^q \br{\vek{x}_z}^r \rho\br{\vek{x}} \, d\vek{x}
+    \end{equation}
+    for some $p,q,r$, which means that the zero-th moment $p=q=r=0$ is the total mass of the object, the first moment $p=q=r=1$ yields the centre of mass, and the entries of the inertia tensor can be computed from some other $p,q,r \in \mathds{N}_0^2$ that is discussed in \autoref{subsubsec:inertia-tensor-computation}.
+
+    \subsubsection{Volume integrals as sums over triangles}
+    
+    Using the fact that the input triangular mesh is now a closed manifold, there exists a method for computing the analytic mass moment of the mesh. 
+    
+    The method makes use of the notion of signed volumes $V'$ of tetrahedra, where given some vertex $O$ of a tetrahedron and the triangle $\triangle_{XYZ}$ formed by its remaining, ordered vertices, it is assigned either a positive or a negative volume depending on whether the normal of the triangle $\triangle_{XYZ}$ faces towards or away from $O$. Note that since the input mesh is now a watertight manifold, each connected component of the mesh defines a bounded interior and unbounded exterior, consists of triangles and can therefore be stored in a consistent winding order such that the normals $\frac{\overrightarrow{XY} \times \overrightarrow{XZ}}{\abs{\overrightarrow{XY} \times \overrightarrow{XZ}}}$ all point towards the exterior or all point towards the interior. Whether clockwise or anti-clockwise winding order is chosen is irrelevant as long as it is consistent across the mesh.
+    
+    The integration domain $\Omega_{rigid}$ could be partitioned into a set of tetrahedra $\Omega_{rigid} = \bigcup_i \tetrahedron_i$ and $\forall i,j: \tetrahedron_i \cap \tetrahedron_j = \emptyset$ such that the integral can be written as $\int_{\Omega_{rigid}} \,dV = \sum_{\tetrahedron_i} V\br{\tetrahedron_i}$ where $V\br{\tetrahedron_i}$ is the volume of the $i$-th tetrahedron that can be computed analytically from the vertices. This would necessitate a decomposition into tetrahedra that is neither trivial nor efficient. 
+    
+    Instead, one fixed point $O$ anywhere in space can be chosen to construct tetrahedra $\tetrahedron_{ABCO}$ by simply summing over all the triangles $\triangle_{ABC}$ in the mesh and appending the vertex $O$. These tetrahedra no longer partition space, so a simple sum over their volumes would not yield the correct total volume of the domain but some possibly larger value. However, the crucial insight lies in the fact that summing up the signed volumes $V'\br{\tetrahedron_{ABCO}}$ with a consistent winding order as described above results in multiply accounted for volumes outside $\Omega_{rigid}$ exactly cancelling out, leaving only the volume inside $\Omega_{rigid}$ which is accounted for an odd number of times with alternating signs. 
+    
+    The intuition here is similar to the Jordan Curve theorem mentioned in \autoref{subsec:initial-conditions}: if a ray from $O$ to some point on the $\triangle_{ABC}$ is imagined, then just as the number of intersections of the ray with $\partial\Omega_{rigid}$ indicates whether a point along the ray is inside or outside the domain depending on if the number of intersections is even or odd, the ray also alternates between intersecting faces with normals in or against the ray direction, and in consequence the volume containing some point on the ray is described by an even number of terms in the sum of signed volumes with alternating signs that therefore cancel to zero, or an odd number that is always negative or always positive. \autoref{fig:volume-integral-triangle-mesh} makes this much clearer by showing a concrete example in two dimensions. 
+
+    \begin{figure}
+      \begin{center}
+        \begin{asy}
+import geometry;
+import patterns;
+size(10cm);
+pair[] P = {(-1,2),(2,2.5),(5,4),(4,1)};
+pair[] directions = {W, NW, NE, SE};
+pair O = (1,0);
+
+pen hatchpen = black+opacity(0.8)+linewidth(0.1);
+add("hatch1",hatch(H=1.1mm, dir=NE, p=hatchpen));
+add("hatch2",hatch(H=1.1mm, dir=NW, p=hatchpen));
+
+pen style1 = red+opacity(0.2);
+pen style2 = blue+opacity(0.2);
+pen poly_pen = linewidth(1.0) + black;
+
+path poly = P[0];
+for (int i = 0; i < P.length; ++i) {
+  pair dir = directions[i % directions.length];
+  dot(P[i]);
+  label("$V_"+string(i)+"$", P[i], dir);
+  poly = poly -- P[i];
+}
+poly = poly -- cycle;
+draw(poly, poly_pen);
+
+dot(O); label("$O$", O, S);
+
+bool isNormalTowardsO(pair A, pair B, pair O) {
+  pair AB = B - A;
+  pair AO = O - A;
+  real cross = AB.x * AO.y - AB.y * AO.x;
+  return cross > 0;
+}
+
+for (int i = 0; i < P.length; ++i) {
+  pair A = P[i];
+  pair B = P[(i+1) % P.length]; 
+  if (isNormalTowardsO(A, B, O)) {
+    filldraw(A -- B -- O -- cycle, style1);
+  } else {
+    filldraw(A -- B -- O -- cycle, style2);
+  }
+}
+for (int i = 0; i < P.length; ++i) {
+  pair A = P[i];
+  pair B = P[(i+1) % P.length];
+  if (isNormalTowardsO(A, B, O)) {
+    fill(A -- B -- O -- cycle, pattern("hatch1"));
+  } else {
+    fill(A -- B -- O -- cycle, pattern("hatch2"));
+  }
+}
+          \end{asy}
+          \caption{A volume integral using the described method of signed volumes is shown for a polygon $V_0V_1V_2V_3$ and an additional vertex $O$ at the origin. Whereas in three dimensions, volumes of tetrahedrons are added in a sum over triangles, in this two-dimensional setting the areas of triangles are added in a sum over edges of the mesh. Positive signed volumes are coloured blue and hatched along one diagonal, negative volumes are red and hatched along the other diagonal. The purple, cross-hatched area outside the mesh is therefore added once and subtracted once, resulting in a net contribution to the total area of zero, while the area inside the polygon does not cancel out and remains as the result of the computation.}
+          \label{fig:volume-integral-triangle-mesh}
+        \end{center}
+    \end{figure}
+
+    Since the fixed point $O$ is arbitrary, the most computationally efficient choice is $O=\br{0,0,0}^T$. With this choice, the signed volume of any tetrahedron $\tetrahedron_{ABCO}$ can be defined as:
+    \begin{align}
+      V'\br{\tetrahedron_{ABCO}} &= \frac{1}{6}\det\br{J\br{\tetrahedron_{ABCO}}}\\
+      &= \frac{1}{6}\det\br{\begin{bmatrix}
+      A_x&B_x&C_x\\A_y&B_y&C_y\\A_z&B_z&C_z
+      \end{bmatrix}}\\
+      &= \frac{1}{6}\br{\vek{A} \times \vek{B}} \cdot \vek{C}
+    \end{align}
+    where $J$ denotes the Jacobian of the tetrahedron and the position vector of each vertex $\overrightarrow{OA}=\vek{A}$ etc. can be used in the Jacobian since $O$ was chosen to be the origin. The triple scalar product used to compute the determinant is anticommutative, so the order of the vectors $\vek{A},\vek{B},\vek{C}$ in the expression above does not matter as long as the same order is consistently applied to all triangles - only the sign of the result may  swap as a consequence, which does not matter. With this, the volume integral can be written as a sum:
+    \begin{equation}
+      V\br{\Omega_{rigid}} = \int_{\Omega_{rigid}} \,dV = \abs{\sum_{\triangle_{ABC}} V'\br{\tetrahedron_{ABCO}}}
+    \end{equation}
+
+    % Instead of integrating a quantity over a volume inside a triangular mesh by, for example, partitioning it into tetrahedra and summing up the analytic expressions for the integral over each tetrahedron, one additional fixed point $O$ anywhere in space can be used to construct a sum over tetrahedra $OABC$ for each triangle $ABC$ in the triangular mesh. 
+    
+    
+    % Whereas a volume integral $\int_{\Omega_{rigid}} \,dV$ can be written as the sum of volumes of tetrahedra $\sum_{ABCD} V_{ABCD}$ for each tetrahedron $ABCD$ that partitions $\Omega_{rigid}$, the integral can now also be written as the sum of signed volumes $\sum_{ABC} V_{ABCO}'$, which is simply a sum over the triangles $ABC$ in the triangular mesh and does not require a possibly expensive decomposition into tetrahedra. 
+    
+    % The crucial insight into why this method works is similar to the Jordan curve theorem, except the intuition is lifted from rays to volumes as per the Jordan any volume inside the rigid body domain is accounted for an odd number of times, volumes outside are accounted for an even number of times and the sign of the signed volume alternates at every intersection with the surface $\partial\Omega_{rigid}$.
+    
+    \subsubsection{Zeroth mass density moment: total mass}
+    It follows that the total mass of a rigid body of homogeneous density $\rho$ is:
+    \begin{equation}\label{eq:total-rigid-body-mass}
+      M\br{\Omega_{rigid}} = \int_{\Omega_{rigid}} \rho \,dV = \rho \abs{\sum_{\triangle_{ABC}} V'\br{\tetrahedron_{ABCO}}} = \abs{M'\br{\Omega_{rigid}}}
+    \end{equation}
+    which can be efficiently and conveniently computed for each face of the mesh in parallel and summed up using a parallel reduction.
+
+    \subsubsection{First mass density moment: centre of mass}
+    Better yet, this method generalizes to the volume integrals necessary to determine the centre of mass and higher order mass moments of the rigid body, such as the inertia tensor. The centre of mass is defined as:
+    \begin{equation}
+      \vek{x}_{cm}\br{\Omega_{rigid}} = \frac{1}{M\br{\Omega_{rigid}}}\int_{\Omega_{rigid}} \vek{x}' \cdot m\br{\vek{x}'} \, d\vek{x}'
+    \end{equation}
+    Since the centre of mass of any tetrahedron is its centroid, the signed centre of mass of each tetrahedron in the sum can be given in terms of the signed mass $M'$ defined in \autoref{eq:total-rigid-body-mass} as:
+    \begin{equation}
+      \vek{x}_{cm,ABC}' = \frac{M'}{4}\br{\vek{A}+\vek{B}+\vek{C}}
+    \end{equation}
+    which means the centre of mass of the entire rigid body can be computed as:
+    \begin{equation}
+      \vek{x}_{cm} = \frac{1}{M} \sum_{\triangle_{ABC}} \vek{x}_{cm,ABC}'
+    \end{equation}
+
+    \subsubsection{Second mass density moment: inertia tensor}\label{subsubsec:inertia-tensor-computation}
+
     \section{Rigid Body Kinematics}\label{sec:rigid-bodies}
 \chapter{Visualization}\label{chp:visualization}
     \section{Spray, Foam and Bubble Generation}
@@ -608,7 +779,7 @@ Once the fluid solver is completed, including one-way coupling to boundaries as 
     
     It should be noted that an efficient and convenient, explicit uniform grid can be constructed in the Taichi language directly using \texttt{pointer}, \texttt{bitmasked}, \texttt{hashed} and \texttt{dynamic} nodes to create a tree structure that is compiled to behave like a simple 3-dimensional field of grid cells, which contain a list of particle indices, as outlined in \cite[this paper]{taichi-sparse}. While such an implementation yielded comparable results to the method described in the following and could have been further tuned, it was superseded in this instance by a method more common in the literature surrounding the problem at hand, which relies on no ad-hoc parameters specific to the simulation domain or implementation.
 
-    \subsubsection*{Construction}
+    \subsubsection{Construction}
     Firstly,  the grid cell a particle $i$ resides in is computed as \autocite{compressed-neighbour-lists}:
     \begin{equation}
       c(x_i) =  \left\lfloor\frac{x-x_{min}}{\hbar}\right\rfloor
@@ -657,15 +828,15 @@ Once the fluid solver is completed, including one-way coupling to boundaries as 
       \end{algorithmic}
     \end{algorithm}
 
-    \subsubsection*{Query}
+    \subsubsection{Query}
     Using the array of sorted particle indices, the index function $I$ and the counts of particles per cell as well as its prefix, all particles in a given cell can be queried in constant time. For a particle in cell $I_i$, all $3^d$ surrounding cells are queried. For each such surrounding cell with index $I_j$, the first particle in that cell has the index $\texttt{sorted}[\texttt{counts}_<]$ and the remaining particles in the same cell are then $\texttt{counts}[I_j]$ subsequent indices. 
 
     In fact, one optimization due to the use of the XYZ curve is that to find the neighbours of a particle in cell $I(k,l,m)$ in three dimensions, only the first particle in $I(k-1, l, m)$ has to be found, after which the next $\sum_{i=-1}^{i=1}\texttt{counts}[I(k-i,l,m)]$ particles necessary to complete the query along the x-axis lie subsequent in memory, necessitating only $9$ coherent sections of memory to be read instead of $27$ in the worst case.
 
-    \subsubsection*{Discussion}
+    \subsubsection{Discussion}
     The algorithm shown \autocite{hoetzlein-rama-counting-sort} is simple, elegant, can achieve high performance and is very much suited for massively parallel hardware. One disadvantage however, is that the representation contains arrays that scale with the size of the simulation domain, which is a limitation compared to data structures that can more easily adapt to infinite domains and consume less memory for very sparsely filled domains, such as compact hashing \autocites{tutorial2019}{compressed-neighbour-lists}. Since the explicit representation is small, with only a few 32-bit numbers stored per grid cell, this was not found to have a noticeable impact in this instance.
 
-    The simulation bounds $\vek{x}_{min},\vek{x}_{max}$ must be known for the XYZ-curve to be applicable in the manner outlined here. In the implementation, the boundaries of the simulation domain are strictly enforced, such that $\vek{x}_i$ is guaranteed to lie in the axis aligned bounding box spanned by $\vek{x}_{min},\vek{x}_{max}$. A grid with two additional grid cells along each axis in each the positive and negative directions is then used, such that bound checks are unnecessary and branches in the very hot code path of the query procedure are avoided.
+    The simulation bounds $\vek{x}_{min},\vek{x}_{max}$ must be known for the XYZ-curve to be applicable in the manner outlined here. In the implementation, the boundaries of the simulation domain are strictly enforced using clamping, such that $\vek{x}_i$ is guaranteed to lie in the axis aligned bounding box spanned by $\vek{x}_{min},\vek{x}_{max}$. A grid with two additional grid cells along each axis in each the positive and negative directions is then used, such that bound checks are unnecessary and branches in the hot code path of the query procedure are avoided.
     
     In a simulation using structure-of-arrays data layouts, as is common in high-performance applications, particle attributes $\vek{x}_i, \vek{v}_i, m_i$ etc. can be re-sorted to restore memory coherency and make particles that are likely to be neighbours likely to be adjacent in memory, leading to less cache misses and better performance. One advantage of this sorting-based approach is that the $\texttt{sorted}$ buffer is computed for neighbourhood computations and can be reused at no additional cost to perform such a resorting along the space-filling curve.
 
