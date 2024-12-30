@@ -650,16 +650,16 @@ Once the fluid solver is completed, including one-way coupling to boundaries as 
     
     Using the fact that the input triangular mesh is now a closed manifold, there exists a method for computing the analytic mass moment of the mesh. 
     
-    The method makes use of the notion of signed volumes $V'$ of tetrahedra, where given some vertex $O$ of a tetrahedron and the triangle $\triangle_{ABC}$ formed by its remaining, ordered vertices, it is assigned either a positive or a negative volume depending on whether the normal of the triangle $\triangle_{ABC}$ faces towards or away from $O$. Note that since the input mesh is now a watertight manifold, each connected component of the mesh defines a bounded interior and unbounded exterior, consists of triangles and can therefore be stored in a consistent winding order such that the normals $\frac{\overrightarrow{AB} \times \overrightarrow{AC}}{\abs{\overrightarrow{AB} \times \overrightarrow{AC}}}$ all point towards the exterior or all point towards the interior. In this instance, counter-clockwise winding is assumed, but clockwise winding can be accounted for by flipping the sign of the signed volume.
+    The method makes use of the notion of signed volumes $V'$ of tetrahedra, where given some vertex $O$ of a tetrahedron and the triangle $\triangle_{ABC}$ formed by its remaining, ordered vertices, it is assigned either a positive or a negative volume depending on whether the normal of the triangle $\triangle_{ABC}$ faces towards or away from $O$. Note that since the input mesh is now a watertight manifold, each connected component of the mesh defines an interior and an exterior, consists of triangles and can be stored in a consistent winding order such that the normals $\frac{\overrightarrow{AB} \times \overrightarrow{AC}}{\abs{\overrightarrow{AB} \times \overrightarrow{AC}}}$ all point towards the exterior, as is convention, or all point towards the interior. In this instance, counter-clockwise winding was used, but differing input meshes can be accounted for by flipping the sign of the signed volume accordingly.
     
     More traditionally, the integration domain $\Omega_{rigid}$ could be partitioned into a set of tetrahedra $\{\tetrahedron_i\}$ such that $\Omega_{rigid} = \bigcup_i \tetrahedron_i$ and $\forall i,j: \tetrahedron_i \cap \tetrahedron_j = \emptyset$ so that the integral can be written as:
     \begin{equation}
       \int_{\Omega_{rigid}} \,dV = \sum_{\tetrahedron_i} V\br{\tetrahedron_i}
     \end{equation} where $V\br{\tetrahedron_i}$ is the volume of the $i$-th tetrahedron that can be computed analytically from its vertices. This would necessitate a decomposition into tetrahedra that is neither trivial nor efficient. 
     
-    Instead, one fixed point $O$ anywhere in space can be chosen to construct tetrahedra $\tetrahedron_{ABCO}$ by simply summing over all the triangles $\triangle_{ABC}$ in the mesh and appending the vertex $O$ to form a tetrahedron. These tetrahedra no longer partition space, so a simple sum over their volumes would not yield the correct total volume of the domain but some possibly larger value. However, the crucial insight lies in the fact that summing up the signed volumes $V'\br{\tetrahedron_{ABCO}}$ with a consistent winding order as described above results in multiply accounted for volumes outside $\Omega_{rigid}$ exactly cancelling out, leaving only the volume inside $\Omega_{rigid}$, which is accounted for an odd number of times with alternating signs. 
+    Instead, one fixed point $O$ anywhere in space can be chosen to construct tetrahedra $\tetrahedron_{ABCO}$ by simply summing over all the triangles $\triangle_{ABC}$ in the mesh and appending the vertex $O$ to form a tetrahedron. These tetrahedra no longer partition space, so a simple sum over their volumes would not yield the correct total volume of the domain but some possibly larger value. However, the crucial insight lies in the fact that summing up the signed volumes $V'\br{\tetrahedron_{ABCO}}$ with a consistent winding order as described above results in multiply accounted for volumes outside $\Omega_{rigid}$ exactly cancelling out, leaving only the volume inside $\Omega_{rigid}$, which is accounted for an odd number of times with alternating signs. This is conceptually simlar to how parity of the number of intersections along a ray is used to determine if a point lies inside a polygon as per the Jordan Curve theorem in \autoref{subsec:initial-conditions}, only the parity of faces with normals oriented towards or away from some vertex $O$ is now used to determine subvolumes inside or outside the mesh. \autoref{fig:volume-integral-triangle-mesh} might make this concept clearer by illustrating a concrete example in two dimensions. 
     
-    The intuition here is similar to the Jordan Curve theorem mentioned in \autoref{subsec:initial-conditions}: if a ray from an $O$ outside of the mesh to some point on $\triangle_{ABC}$ is imagined, then just as the number of intersections of the ray with $\partial\Omega_{rigid}$ indicates whether a point along the ray is inside or outside the domain depending on if the number of intersections is even or odd, the ray also alternates between intersecting faces with normals in or against the ray direction, and in consequence the volume containing some point on the ray is described by an even number of terms in the sum of signed volumes with alternating signs that therefore cancel to zero, or an odd number that is always negative or always positive. \autoref{fig:volume-integral-triangle-mesh} makes this much clearer by showing a concrete example in two dimensions. 
+    %The intuition here is similar to the Jordan Curve theorem mentioned in \autoref{subsec:initial-conditions}: if a ray from an $O$ outside of the mesh to some point on $\triangle_{ABC}$ is imagined, then just as the number of intersections of the ray with $\partial\Omega_{rigid}$ indicates whether a point along the ray is inside or outside the domain depending on if the number of intersections is even or odd, the ray also alternates between intersecting faces with normals in or against the ray direction, and in consequence the volume containing some point on the ray is described by an even number of terms in the sum of signed volumes with alternating signs that therefore cancel to zero, or an odd number that is always negative or always positive. \autoref{fig:volume-integral-triangle-mesh} makes this much clearer by showing a concrete example in two dimensions. 
 
     \begin{figure}
       \begin{center}
@@ -730,17 +730,17 @@ for (int i = 0; i < P.length; ++i) {
       \end{bmatrix}}\\
       &= \frac{1}{6}\br{\vek{A} \times \vek{B}} \cdot \vek{C}\label{eq:tetrahedron-signed-volume-determinant}
     \end{align}
-    where $J$ denotes the Jacobian of the tetrahedron and the position vector of each vertex $\overrightarrow{OA}=\vek{A}$ etc. can be used in the Jacobian since $O$ was chosen to be the origin. The triple scalar product used to compute the determinant is anticommutative, so the order of any two of the vectors $\vek{A},\vek{B},\vek{C}$ in the expression above can be swapped to alternate the sign of the result, for example to account for a clockwise winding order. With this, the volume integral can be written as a sum \autocite{efficient-feature-extraction}:
+    where $J$ denotes the Jacobian of the tetrahedron and the position vector of each vertex $\overrightarrow{OA}=\vek{A}$ etc. can be used in the Jacobian since $O$ was chosen to be the origin. The triple scalar product used to compute the determinant is anticommutative, so the order of any two of the vectors $\vek{A},\vek{B},\vek{C}$ in the expression above can be swapped to alternate the sign of the result, for example to account for a different winding order. With this, the volume integral can be written as a sum \autocite{efficient-feature-extraction}:
     \begin{equation}\label{eq:tetrahedron-signed-volume-sum}
       V\br{\Omega_{rigid}} = \int_{\Omega_{rigid}} \,dV = \abs{\sum_{\triangle_{ABC}} V'\br{\tetrahedron_{ABCO}}}
     \end{equation}
-    From now on, it will be assumed that the winding order and the order of the vectors in \autoref{eq:tetrahedron-signed-volume-determinant} were chosen such that the sum of signed volumes are always positive and the absolute value $\abs{\cdot}$ in \autoref{eq:tetrahedron-signed-volume-sum} could be dropped.
+    From now on, it will be assumed that the winding order and the order of the vectors in \autoref{eq:tetrahedron-signed-volume-determinant} were chosen such that the sum of signed volumes are always positive and the absolute value $\abs{\cdot}$ in \autoref{eq:tetrahedron-signed-volume-sum} could be dropped. In other words, $\sum_{\triangle_{ABC}} V'\br{\tetrahedron_{ABCO}}$ being a positive quantity defines some function $\sgn\br{\tetrahedron_{ABCO}}\in\{-1,1\}$, which assigns a positive or negative weight to any tetrahedron $\tetrahedron_{ABCO}$, yielding the sign of its signed volume $V'$.
 
-    Better yet, this method generalizes to any mass moments as defined in \autoref{eq:mass-density-moments} through the relation \autocite{efficient-feature-extraction}:
+    One of the greatest properties of this method, apart from its exact accuracy for closed meshes, is that it generalizes to any mass moments as defined in \autoref{eq:mass-density-moments} through the relation \autocite{efficient-feature-extraction}:
     \begin{equation}\label{eq:mass-density-moments-using-signed-volume}
-      \mathcal{M}_{pqr} = \sum_{\triangle_{ABC}} \br{V'\br{\tetrahedron_{ABCO}} \cdot \iiint_{\Omega\br{ABCO}} \rho x^p y^q z^r  \,dV}
+      \mathcal{M}_{pqr} = \sum_{\triangle_{ABC}} \br{\sgn\br{\tetrahedron_{ABCO}} \cdot \iiint_{\Omega\br{ABCO}} \rho x^p y^q z^r  \,dV}
     \end{equation}
-    where $\Omega\br{ABCO}$ is the domain of the tetrahedron $\tetrahedron_{ABCO}$, for which exact analytic solutions to the triple integral exist when homogeneous density is assumed.
+    where $\Omega\br{ABCO}$ is the domain of the tetrahedron $\tetrahedron_{ABCO}$, for which exact analytic solutions to the triple integral exist when homogeneous density is assumed, as outlined in \autoref{chp:analytic-tetrahedron-inertia}.
     % Instead of integrating a quantity over a volume inside a triangular mesh by, for example, partitioning it into tetrahedra and summing up the analytic expressions for the integral over each tetrahedron, one additional fixed point $O$ anywhere in space can be used to construct a sum over tetrahedra $OABC$ for each triangle $ABC$ in the triangular mesh. 
     
     
@@ -755,7 +755,7 @@ for (int i = 0; i < P.length; ++i) {
     \end{equation}
     which can be efficiently and conveniently computed for each face of the mesh in parallel and summed up using a parallel reduction.
 
-    \subsubsection{First mass density moments: centre of mass}
+    \subsubsection{First mass density moments: centre of mass}\label{subsubsec:centre-of-mass}
     Describing changes of linear momentum of a rigid body is conveniently done by applying forces to the centre of mass, which is defined as:
     \begin{equation}
       \vek{x}_{cm}\br{\Omega_{rigid}} = \frac{1}{M\br{\Omega_{rigid}}}\int_{\Omega_{rigid}} \vek{x}' \cdot \rho\br{\vek{x}'} \, dV\br{\vek{x}'} = \frac{1}{\mathcal{M}_{000}}\begin{bmatrix}
@@ -807,10 +807,12 @@ for (int i = 0; i < P.length; ++i) {
       \rho \int_{\Omega\br{ABCO}} x^2+y^2\, dV\\
       \rho \int_{\Omega\br{ABCO}} xy\, dV
     \end{align}
-    and analogously for the other two axes. These exact analytic expressions are cited from \autocite[Tonon]{explicit-exact-tetrahedron-formulas} and moved to \autoref{chp:analytic-tetrahedron-inertia} since they are rather verbose.
+    and analogously for the other two axes. These exact analytic expressions are cited from \autocite[Tonon]{explicit-exact-tetrahedron-formulas} and moved to \autoref{chp:analytic-tetrahedron-inertia} since they are rather verbose. Using \autoref{eq:inertia-appendix-final-eq}, the final inertia tensor $\mathds{I}$ can be computed. With this, all prerequisite quantities are known and a simple rigid body solver can be developed in \autoref{sec:rigid-bodies}.
 
 
     \section{Rigid Body Kinematics}\label{sec:rigid-bodies}
+
+
 \chapter{Visualization}\label{chp:visualization}
     \section{Spray, Foam and Bubble Generation}
     \section{Rendering}
@@ -902,24 +904,66 @@ for (int i = 0; i < P.length; ++i) {
     I_{xy} &= \mathcal{M}_{100} + \mathcal{M}_{010}\\
     I_{xz} &= \mathcal{M}_{100} + \mathcal{M}_{001}\\
     I_{yz} &= \mathcal{M}_{010} + \mathcal{M}_{001}\\
-    \mathcal{M}_{pqr} &= \sum_{\triangle_{ABC}} \br{V'\br{\tetrahedron_{ABCO}} \cdot \underbrace{\iiint_{\Omega\br{ABCO}} \rho x^p y^q z^r  \,dV}_{\text{unknown so far}}}\label{eq:appendix-tetra-mass-moment}
+    \mathcal{M}_{pqr} &= \sum_{\triangle_{ABC}} \br{\sgn\br{\tetrahedron_{ABCO}} \cdot \underbrace{\iiint_{\Omega\br{ABCO}} \rho x^p y^q z^r  \,dV}_{\text{anaytical solution for $\rho=$ const}}}\label{eq:appendix-tetra-mass-moment}
   \end{align}
-  As can be seen, since the signed volume $V'$ of the tetrahedron $\tetrahedron_{ABCO}$ can be computed as outlined in \autoref{sec:mass-moments}, only the volume integral in \autoref{eq:appendix-tetra-mass-moment} is yet to be explained. Exact analytic formulas for this integral in terms of the vertex coordinates $\vek{A},\vek{B},\vek{C}$ were taken from \autocite[Tonon]{explicit-exact-tetrahedron-formulas}, with the only difference being that a minor error in the paper ($b'$ and $c'$ are swapped) was fixed and that by using the origin as one of the four vertices, some terms drop out:
+  Only the solution to the volume integrals in \autoref{eq:appendix-tetra-mass-moment} are yet to be shown. Exact analytic formulas for this integral in terms of the vertex coordinates $\vek{A},\vek{B},\vek{C},\vek{D}$ of a general tetrahedron were taken from \autocite[Tonon]{explicit-exact-tetrahedron-formulas}, with the only difference being that a minor error in the paper ($b'$ and $c'$ are swapped) was fixed and that by using the origin $\vek{O} = \vek{D}$ as one of the four vertices, some terms drop out \autocite{explicit-exact-tetrahedron-formulas}:
   % the determinant of the Jacobian $\det\br{J\br{\tetrahedron_{ABCO}}}$ is used instead of the absolute value of the determinant to account for $V'$,
   \begin{align}
     \frac{I_{xx}\br{\tetrahedron_{ABCO}}}{\rho \abs{\det(J\br{\tetrahedron_{ABCO}})} } &= \frac{\br{
       A_y^2 + A_yB_y+B_y^2 + A_yC_y + B_yC_y + C_y^2 + 
       A_z^2 + A_zB_z+B_z^2 + A_zC_z + B_zC_z + C_z^2
     }}{60}\\
+    \frac{I_{yy}\br{\tetrahedron_{ABCO}}}{\rho \abs{\det(J\br{\tetrahedron_{ABCO}})} } &= \frac{\br{
+      A_x^2 + A_xB_x+B_x^2 + A_xC_x + B_xC_x + C_x^2 + 
+      A_z^2 + A_zB_z+B_z^2 + A_zC_z + B_zC_z + C_z^2
+    }}{60}\\
+    \frac{I_{zz}\br{\tetrahedron_{ABCO}}}{\rho \abs{\det(J\br{\tetrahedron_{ABCO}})} } &= \frac{\br{
+      A_x^2 + A_xB_x+B_x^2 + A_xC_x + B_xC_x + C_x^2 + 
+      A_y^2 + A_yB_y+B_y^2 + A_yC_y + B_yC_y + C_y^2
+    }}{60}\\
     \frac{I_{xy}\br{\tetrahedron_{ABCO}}}{\rho \abs{\det(J\br{\tetrahedron_{ABCO}})} } &= \frac{\br{
       2A_xA_y + B_xA_y + C_xA_y + A_xB_y + 
       2B_xB_y + C_xB_y + A_xC_y + B_xC_y + 
       2C_xC_y 
+    }}{120}\\
+    \frac{I_{xz}\br{\tetrahedron_{ABCO}}}{\rho \abs{\det(J\br{\tetrahedron_{ABCO}})} } &= \frac{\br{
+      2A_xA_z + B_xA_z + C_xA_z + A_xB_z + 
+      2B_xB_z + C_xB_z + A_xC_z + B_xC_z + 
+      2C_xC_z 
+    }}{120}\\
+    \frac{I_{yz}\br{\tetrahedron_{ABCO}}}{\rho \abs{\det(J\br{\tetrahedron_{ABCO}})} } &= \frac{\br{
+      2A_yA_z + B_yA_z + C_yA_z + A_yB_z + 
+      2B_yB_z + C_yB_z + A_yC_z + B_yC_z + 
+      2C_yC_z 
     }}{120}
   \end{align}
-  and so on for the other values, where $\rho \abs{\det(J\br{\tetrahedron_{ABCO}})} $ was moved to the right-hand side to save space. 
+  where $\rho \abs{\det(J\br{\tetrahedron_{ABCO}})} $ was moved to the left side of the equations to save space. 
   
-  These rather lengthy
+  Since the origin was chosen as one of the vertices and the density is homogeneous, these rather lengthy expressions can be greatly simplified using vectorial notation. At the same time, the absolute value around the determinant can be dropped if the determinant is computed using the triple scalar product of \autoref{eq:tetrahedron-signed-volume-determinant}, which already contains $\sgn\br{\tetrahedron_{ABCO}}$ and therefore yields values $I_{ij}', I'_{kk}$ that can be directly accumulated in a sum across all triangles $\triangle_{ABC}$.  Here, $i,j,k$ are used to index the components of the vertices. Let $\vek{V}=\br{A_i, B_i, C_i}^T$ and $\vek{W}=\br{A_j, B_j, C_j}^T$ be the vectors of the $i$-th and $j$-th components of $\vek{A}, \vek{B}, \vek{C}$ for $i\neq j \neq k \neq i$ and one can obtain:
+  \begin{equation}
+    I_{kk}'\br{\tetrahedron_{ABCO}} = \frac{\rho \det(J\br{\tetrahedron_{ABCO}})}{120}\br{
+      \vek{V}^2 + \br{\abs{\vek{V}}_{L1}}^2 +\vek{W}^2 +  \br{\abs{\vek{W}}_{L1}}^2
+    }
+  \end{equation}
+  for the moments of inertia on the diagonal using $\vek{V}^2=\vek{V}\cdot\vek{V}$ and the $L_1$ or sum norm $\abs{\vek{V}}_{L1} = A_i+B_i+C_i$ as well as: \begin{equation}
+    I_{ij}'\br{\tetrahedron_{ABCO}}  = \frac{\rho \det(J\br{\tetrahedron_{ABCO}})}{120}\br{ \begin{bmatrix}
+      2&1&1\\
+      1&2&1\\
+      1&1&2
+    \end{bmatrix} \vek{V}} \cdot \vek{W}
+  \end{equation}
+  for the products of inertia using a matrix multiplication and a dot product, which is much more concise but equivalent. These terms can trivially be computed on massively parallel hardware for each triangle $\triangle_{ABC}$ and summed using a parallel reduction to yield the components $I_{kk}^{sum}, I_{ij}^{sum}$ of the inertia tensor:
+  \begin{align}
+    I_{kk}^{sum} &= \sum_{\triangle_{ABC}} I_{kk}' \br{\tetrahedron_{ABCO}}\\
+    I_{ij}^{sum} &= \sum_{\triangle_{ABC}} I_{ij}' \br{\tetrahedron_{ABCO}}
+  \end{align}
+
+  Lastly, note that the resulting elements of the tensor describe the inertia with respect to a rotation about the origin of the arbitrarily chosen coordinate system, whereas $\mathds{I}$ should in this case describe the inertia tensor for rotations about the centre of mass, which can be calculated as laid out in \autoref{subsubsec:centre-of-mass}. To transform the inertia tensor elements accordingly, the \textit{transfer-of-axis relations} can be applied: \autocite{fast-accurate-polyhedral-mass-properties}\begin{align}\label{eq:inertia-appendix-final-eq}
+    I_{kk} &= I_{kk}^{sum} - M\br{r_i^2+r_j^2}\\
+    I_{ij} &= I_{ij}^{sum} - Mr_ir_j
+  \end{align}
+  for $\vek{x}_{cm}=(r_x,r_y,r_z)^T$ and a body of mass $M$. 
+
 
 
 \end{appendices}
