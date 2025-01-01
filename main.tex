@@ -523,7 +523,7 @@ Once the fluid solver is completed, including one-way coupling to boundaries as 
     % Equipped with an initial state $\{\forall i:\br{\vek{x}_i(t_0),\vek{v}_i(t_0),m_i(t_0)}\}$ that is assumed to be a valid state of the fluid, as well as the discrete momentum equation to calculate accelerations $\vek{a}_i(t)$ with, numerical time integration schemes can be used to solve the equation of motion and propagate the solution forwards in time.
 
     For this purpose, time is discretized into time steps $\Delta t$ and a numerical integration scheme is applied to obtain particle trajectories by updating particle positions and velocities. In Computer Graphics literature, the most prevalent scheme \autocites{tutorial2019}{wcsph}{iisph}{iisph-flip}{dfsph} to this end is symplectic or semi-implicit Euler time integration:
-    \begin{align}
+    \begin{align}\label{eq:numerical-time-integration}
       \vek{v}(t+\Delta t) &= \vek{v}(t) + \Delta t \vek{a}(t)\\
       \vek{x}(t+\Delta t) &= \vek{x}(t) + \Delta t \vek{v}(t+\Delta t)
     \end{align}
@@ -774,7 +774,7 @@ for (int i = 0; i < P.length; ++i) {
     \end{equation}
 
     \subsubsection{Second mass density moments: inertia tensor}\label{subsubsec:inertia-tensor-computation}
-    To describe how torques create rotations of rigid bodies, the inertia of the body about any axis has to be known. The inertia can be thought of as the quotient of the angular momentum $\vek{L}$ and the angular velocity $\vek{\omega}$, yielding a second rank tensor $\mathds{I}$ which is a $3\times 3$ matrix in three dimensions with diagonal elements called \textit{moments of inertia} and off-diagonals referred to as \textit{products of inertia} \autocite{classical-mechanics}. The eigenvectors of the inertia tensor are the principal axes of rotation; it is a symmetric tensor with six degrees of freedom and is defined as \autocites{fast-accurate-polyhedral-mass-properties}{classical-mechanics}:
+    To describe how torques create rotations of rigid bodies, the inertia of the body about any axis has to be known. The inertia can be thought of as the quotient of the angular momentum $\vek{L}$ and the angular velocity $\vek{\omega}$, yielding a second rank tensor $\mathds{I}$ which is a $3\times 3$ matrix in three dimensions with diagonal elements called \textit{moments of inertia} and non-diagonals referred to as \textit{products of inertia} \autocite{classical-mechanics}. The eigenvectors of the inertia tensor are the principal axes of rotation; it is a symmetric tensor with six degrees of freedom and is defined as \autocites{fast-accurate-polyhedral-mass-properties}{classical-mechanics}:
     \begin{equation}\label{eq:inertia-tensor-long-definition}
       \mathds{I} = \begin{bmatrix}
         \int_\Omega \rho\br{x,y,z} \br{y^2+z^2} \,dV&
@@ -810,7 +810,36 @@ for (int i = 0; i < P.length; ++i) {
     and analogously for the other two axes. These exact analytic expressions are cited from \autocite[Tonon]{explicit-exact-tetrahedron-formulas} and moved to \autoref{chp:analytic-tetrahedron-inertia} since they are rather verbose. Using \autoref{eq:inertia-appendix-final-eq}, the final inertia tensor $\mathds{I}$ can be computed. With this, all prerequisite quantities are known and a simple rigid body solver can be developed in \autoref{sec:rigid-bodies}.
 
 
-    \section{Rigid Body Kinematics}\label{sec:rigid-bodies}
+    \section{Rigid Body Dynamics}\label{sec:rigid-bodies}
+    With the mass properties of rigid bodies calculated in \autoref{sec:mass-moments}, the dynamics of unconstrained rigid bodies can be discussed in order to arrive at a solver which can be weakly coupled to the fluid solver from \autoref{chp:fluid}. Two-way coupling is achieved through two interfaces between the fluid and rigid solvers:
+    \begin{enumerate}
+      \item By sampling the boundary of the rigid body as explained in \autoref{sec:boundary} and moving the boundary particles as the rigid body moves, contact with the fluid is resolved in the same way as for static boundaries which exhibit one-way coupling: pressure forces computed by the fluid solver in \autoref{sec:iisph} resolve penetrations, even as the positions of rigid boundary particles are updated to reflect the current position and orientation of the rigid body.
+      \item On the other hand, the fluid must also exert forces and torques on the rigid body, influencing its movement and creating two-way coupling. This was alluded to in \autoref{force-on-bdy}, where the pressure force exerted on a boundary particle by a fluid particle was formulated.
+    \end{enumerate}
+
+    These interfaces define the inputs and outputs of the rigid body solver. It takes a state of a rigid body and all the forces and torques that act on it, then computes an updated state of the body and finally moves all particles that sample the rigid body boundary to reflect the changes in the rigid body's state.
+    These three steps are outlined in the following.
+
+    \subsubsection{Forces and Torques}
+    As per Chasles' theorem, rigid body motion can be described purely by the position and rotation of the body \autocite{classical-mechanics}, since ideal rigidity means that the relative positions of each two points in the body do not change and no other deformations such as observed in elastic bodies or fluids can occur. This means that the dynamics can be split into the two separate problems of computing the linear and angular movement of the body \autocite{classical-mechanics}. This is conveniently done by using the centre of mass $\vek{x}_{cm}$ as the origin which defines \textit{body space}. In this coordinate system, any point $\vek{x}(t)$ in the rigid body can be described as \autocite{physically-based-rigids}:
+    \begin{equation}
+      \vek{x}(t) = \mathds{O}(t)\vek{x}(t=0) + \vek{x}_{cm}(t)
+    \end{equation}
+    where $\mathds{O}$ encodes the current rotation about the centre of mass in a rotation matrix and $\vek{x}_{cm}(t)$ is the position of the centre of mass in world space. This means that all rotational aspects of the motion are encoded in the orientation $\mathds{O}$, while the translational movement only affects the position and velocity of the centre of mass. 
+    
+    Accordingly, for the change in linear momentum $\vek{f}_{rigid} = \frac{d}{dt} M\vek{v}_{cm}$ and constant mass $M$ it holds that all forces $\vek{f}_i$ affecting the rigid body can simply be summed \autocite{physically-based-rigids}:
+    \begin{equation}
+      \vek{f}_{rigid} = \sum_i \vek{f}_i
+    \end{equation}
+    irrespective of the position at which each force acts. This results in a single net translational force, which can be interpreted as an acceleration $\vek{a}_{rigid} = \frac{1}{M}\vek{f}_{rigid}$ and integrated with respect to time as in \autoref{eq:numerical-time-integration}.
+
+    Meanwhile, the rate of change of the angular momentum  $\frac{d}{dt}\vek{L}=\vek{\tau}_{rigid}$ defines the net torque $\vek{\tau}_{rigid}$, which can be computed as \autocite{physically-based-rigids}:
+    \begin{equation}
+      \vek{\tau}_{rigid} = \sum_i \vek{\tau}_i = \sum_i (\vek{x}_i-\vek{x}_{cm}) \times \vek{f}_i
+    \end{equation}
+    where the position $\vek{x}_i$ in world space at which the force $\vek{f}_i$ acts upon the rigid body relative to the centre of mass is relevant. Intuitively, the vector $\vek{\tau}_i$ can be understood as pointing in the axis of the rotation that a force $\vek{f}_i$ would cause if the rigid body was fixed at its centre of mass \autocite{physically-based-rigids}.
+
+    
 
 
 \chapter{Visualization}\label{chp:visualization}
@@ -952,7 +981,7 @@ for (int i = 0; i < P.length; ++i) {
       1&1&2
     \end{bmatrix} \vek{V}} \cdot \vek{W}
   \end{equation}
-  for the products of inertia using a matrix multiplication and a dot product, which is much more concise but equivalent. These terms can trivially be computed on massively parallel hardware for each triangle $\triangle_{ABC}$ and summed using a parallel reduction to yield the components $I_{kk}^{sum}, I_{ij}^{sum}$ of the inertia tensor:
+  for the products of inertia using a matrix multiplication and a dot product, which is much more concise than the original formulation. These terms can trivially be computed on massively parallel hardware for each triangle $\triangle_{ABC}$ and summed using a parallel reduction to yield the components $I_{kk}^{sum}, I_{ij}^{sum}$ of the inertia tensor:
   \begin{align}
     I_{kk}^{sum} &= \sum_{\triangle_{ABC}} I_{kk}' \br{\tetrahedron_{ABCO}}\\
     I_{ij}^{sum} &= \sum_{\triangle_{ABC}} I_{ij}' \br{\tetrahedron_{ABCO}}
