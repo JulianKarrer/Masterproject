@@ -429,7 +429,7 @@ Once the fluid solver is completed, including one-way coupling to boundaries as 
     Note that the low asymptotic error order for arbitrary samplings appears to have questionable practical relevance \autocite{tutorial2019} - perhaps because there appears to be some trade-off in Lagrangian methods between the linear error order of a discretization and the quality of the physical conservation properties and sampling isotropy caused by discrete operators, as discussed for example by \autocite[Price]{price-2012}. If desired however, the conditions can be fulfilled for normalized, symmetric kernels by multiplying a scalar to ensure \autoref{eq:normalization-0th-order} holds and solving a $3\times 3$ matrix inversion per particle to ensure \autoref{eq:normalization-1st-order} \autocites{tutorial2019}{price-2012}. Similar consistency conditions exist for SPH approximations of differential operators \autocite{price-2012}.
 
     \subsubsection{Kernel Function}
-    The kernel function is parametrized by $\vek{x}_{ij}=\vek{x}_i-\vek{x}_j$ for samples $i,j$ and a kernel support radius $\hbar$. We denote $W_{ij} := W(\vek{x}_{ij},\hbar) $ for short. For the approximation to be consistent, $W$ must converge to $\delta$ as the support radius goes to zero, meaning the kernel must fulfill \autocite{tutorial2019}:
+    The kernel function is parametrized by $\vek{x}_{ij}=\vek{x}_i-\vek{x}_j$ for samples $i,j$ and a kernel support radius $\hbar$. We denote $W_{ij} := W(\vek{x}_{ij},\hbar) $ for short. For the approximation to be consistent, $W$ must converge to $\delta$ as the support radius goes to zero, meaning the kernel must fulfil \autocite{tutorial2019}:
     \begin{align}
       \int_\Omega W(\vek{x}_{ij},\hbar) &= 1 &\textit{normalization}\\
       \lim_{\hbar\rightarrow 0} W(\vek{x}_{ij},\hbar) &= \delta(\vek{x}_{ij}) &\textit{Dirac-$\delta$ condition}
@@ -500,7 +500,7 @@ Once the fluid solver is completed, including one-way coupling to boundaries as 
     }
     where again $d$ is the dimensionality of the problem. With this, all necessary SPH discretizations for the following chapters are available.
 
-    \subsubsection*{Particle Deficiency and Free Surfaces}
+    \subsubsection{Particle Deficiency and Free Surfaces}\label{subsec:particle-deficiency}
     One peculiarity of the SPH discretization scheme is the behaviour at free surfaces, where the fluid phase discretized into particles meets the non-discretized phase representing for example air in a liquid simulation or vacuum in simulations of gases. Since sums over fluid particles are used to interpolate the density field $\rho$, a lack of samples in the unrepresented phase can be thought of as a perfectly dense sampling with particles that have zero density. Similarly, other field quantities such as pressure, velocity etc. are also implicitly assumed to be zero in the absence of fluid particles, which is relevant for the clamping of pressure values to positive values in \autoref{subsec:jacobi-solver}. 
     
     This leads to a phenomenon called \emphasis{particle deficiency} at the free surface, where only a section of each kernel support radius is filled with neighbouring fluid particles, leading to an underestimation of the density $\rho$ at the surface. While the implicit assumption of $\rho=0$ in the non-represented phase is not a bad assumption where $\rho_{air}\ll\rho_{H_2O}$ etc., it leads to the average density across particles $\sfrac{1}{N}\sum_i^N\rho_i$, where $\rho_i$ is SPH-discretized, depending on the geometry of the fluid, as well as always being an underestimation of the 'true' average density in the fluid. This should be accounted for when average field quantities are used, such as in the convergence criteria of pressure solvers in \autoref{subsec:iisph-convergence}.
@@ -580,7 +580,7 @@ Once the fluid solver is completed, including one-way coupling to boundaries as 
     \end{itemize}
    
 
-    \section{Implicit Incompressible SPH}\label{sec:iisph}
+    \section{The Pressure Poisson equation}
     With the discretization of the Navier-Stokes equations from \autoref{sec:sph-navier-stokes}, a simple equation-of-state based solver such as Weakly Compressible SPH or WCSPH for short, could be implemented directly. However, such a solver that computes pressure accelerations at particles only locally, from immediately neighbouring particles at each time step, can exhibit noticeable oscillations as the complexity of the scene, namely the maximum height of a column of fluid supported by the pressure, increases.
 
     As such a column of particles is uniformly accelerated by gravity but faces an impenetrable boundary at its bottom, a counteracting pressure gradient has to build up. Since pressure is only computed locally and the numerical speed of sound is low, particles will continue to fall, increasing measured density and thereby pressure beyond the linear gradient necessary to counteract gravity, until this superlinear gradient pushes the top of the column up beyond its hydrostatic resting position and repeating, resulting in unrealistic oscillations. In other words, it is hard to enforce incompressibility with such a solver: even if a large stiffness coefficient $k$ is chosen to counteract this effect and increase the numerical speed of sound, a correspondingly small time step size $\Delta t$ would be required to keep the system numerically stable, decreasing efficiency \autocite{iisph}. 
@@ -591,11 +591,11 @@ Once the fluid solver is completed, including one-way coupling to boundaries as 
     \begin{align}
       \vek{v}_i^*\br{t} = \vek{v}\br{t} + \Delta t\br{\vek{g} + \nu\Laplace\vek{v}_i\br{t}}\label{eq:operator-splitting}
     \end{align}
-    before implicitly integrating the pressure acceleration $\vek{a}_i^p$ as described in the following. This method is therefore named \emphasis{Implicit Incompressible SPH} or IISPH for short and was proposed by \autocite[Ihmsen et al.]{iisph}
+    before implicitly integrating the pressure acceleration $\vek{a}_i^p$ as described in \autoref{sec:iisph}. This equates to solving the \emphasis{Pressure Poisson equation}, or PPE for short, which will be derived and discretized in the following and is used to project the particle velocities onto an uncompressed or divergence-free state.
 
-    \subsubsection*{The Pressure Poisson Equation}
+    \subsubsection{Derivation of the Pressure Poisson Equation}
 
-    Pressure computation is, in the case of inviscid flows, the stiff subproblem in the partial differential equations to solve \autocite{tutorial2019}. Pressure values that strongly enforce incompressibility, or in other words act as Lagrange multipliers to the continuity equation \autoref{eq:continuity} \autocite{tutorial2019}, should be computed efficiently. This can be done using iterative, global solvers that solve the \emphasis{Pressure Poisson equation} or PPE for short, which asserts that the pressure forces do in fact enforce the continuity equation. 
+    Pressure computation is, in the case of inviscid flows, the stiff sub-problem in the partial differential equations to solve \autocite{tutorial2019}. Pressure values that strongly enforce incompressibility, or in other words act as Lagrange multipliers to the continuity equation \autoref{eq:continuity} \autocite{tutorial2019}, should be computed efficiently. This can be done using iterative, global solvers that solve the Pressure Poisson equation, which asserts that the pressure forces do in fact enforce the continuity equation. 
     
     One way to derive the PPE is to focus on the density invariance constraint imposed by the continuity equation (see constraint \ref{enum:continuity-equation-constraint-den}). A predicted velocity $\vek{v}_i^*$ would result in positions $\vek{x}_i^*$ that can be used to compute a predicted density $\rho_i^*$ using, for example, \autoref{eq:discrete-density-boundary}. The incompressibility constraint then means that:
     \begin{equation}\label{eq:ppe-incompressibility-constraint}
@@ -636,7 +636,7 @@ Once the fluid solver is completed, including one-way coupling to boundaries as 
     \end{align}
 
     
-    \subsubsection*{Discretizing the Pressure Poisson Equation}
+    \subsubsection{Discretizing the Pressure Poisson Equation}
     The focus in the following lies on the density invariance source term, or in other words discretizing the PPE:
     \begin{equation}
       \Delta t^2 \Laplace p = \rho_0-\rho^*
@@ -696,8 +696,10 @@ Once the fluid solver is completed, including one-way coupling to boundaries as 
     
     Note that the discretization of the Laplace operator $\Laplace p$ using the discretization of the divergence in $\angled{\divergence\br{\nabla p}}$ is not the only possibility, and other discretizations such as the discrete Laplace operator in \autoref{eq:sph-laplace} commonly used to compute viscosities, is also thinkable. For one comparison of the discretization used in \autocite[Implicit Incompressible SPH]{iisph}, which is presented here, to \autoref{eq:sph-laplace} we refer to \autocite[Fürstenau et al.]{fuerstenau-laplace-discretization-comparison}.
     
-    \subsubsection*{Coefficient Extraction and Diagonal Element}
-    With the discretized pressure Poisson equation obtained, one can go about solving the resulting system of $N$ equations at $N$ particles for the unknown pressure values $p_i$. While many possible solvers for this problem exist, a relatively straightforward implementation that is robust, matrix-free, i.e. does not rely on explicitly constructing system matrices of prohibitive $\mathcal{O}\br{N^2}$ proportions, and which can be fully parallelized is achieved by a \emphasis{Relaxed Jacobi Solver} as suggested by the \autocite[original authors of the method]{iisph}. 
+    \section{Implicit Incompressible SPH}\label{sec:iisph}
+    With the discretized pressure Poisson equation obtained, one can go about solving the resulting system of $N$ equations at $N$ particles for the unknown pressure values $p_i$. Many possible solvers for this problem exist, such as Conjugate-Gradient \autocite[as alternatively proposed by Ihmsen et al.]{iisph}, and more recently Nonsmooth Nonlinear Conjugate Gradient methods as suggested by \autocite[Probst and Teschner]{monolithic-rigids-timo}.
+
+    A relatively straightforward implementation that is robust, matrix-free, i.e. does not rely on explicitly constructing system matrices of prohibitive $\mathcal{O}\br{N^2}$ proportions, and which can be fully parallelized is achieved by a \emphasis{Relaxed Jacobi Solver} as suggested in Implicit Incompressible SPH or IISPH for short \autocite[by Ihmsen et al.]{iisph}. 
 
     When using relaxed Jacobi iterations, the system of $N$ equations:
     \begin{equation}
@@ -711,26 +713,26 @@ Once the fluid solver is completed, including one-way coupling to boundaries as 
       -\sum_{k\in\mathcal{B}_i} 
         m_k\frac{p_i}{\rho_i^2} \nabla W_{ik} 
       &\textit{\autoref{eq:discrete-pressure-bdy}}\\
-      &= p_i \underbrace{\br{
+      &= p_i \underbrace{\frac{1}{\rho_i^2}\br{
         -\sum_{j\in\mathcal{N}_i} 
-         \frac{m_j}{\rho_i^2} \nabla W_{ij} 
+        m_j \nabla W_{ij} 
         -\sum_{k\in\mathcal{B}_i} 
-         \frac{m_k}{\rho_i^2} \nabla W_{ik} 
+        m_k \nabla W_{ik} 
       }}_{=: \vek{c}_i}
       - \sum_{j\in\mathcal{N}_i} 
-        m_j\frac{p_j}{\rho_i^2} \nabla W_{ij} 
-      &\textit{factor out $p_i$}
+        m_j\frac{p_j}{\rho_j^2} \nabla W_{ij} 
+      &\textit{factor out $p_i, \sfrac{1}{\rho_i^2}$}
       % &= p_i \vek{c}_i - \sum_{j\in\mathcal{N}_i\setminus\{i\}} 
       %   m_j\frac{p_j}{\rho_i^2} \nabla W_{ij} 
       % &\textit{$\nabla W_{ii}=0$ due to \autoref{eq:sph-property-symmetry}}
     \end{align}
-    where since the kernel is spherically symmetric (\autoref{eq:sph-property-symmetry}) and therefore $\nabla W_{ii}=0$ one can exclude the index $i$ from the set of neighbours and write:
+    where since the kernel is spherically symmetric (\autoref{eq:sph-property-symmetry}) and differentiable and therefore $\nabla W_{ii}=0$ holds, one can exclude the index $i$ from the set of neighbours and write:
     \begin{align}
       \vek{a}_i^p &= p_i \vek{c}_i - 
       \sum_{j\in\mathcal{N}_i\setminus\{i\}} 
-        m_j\frac{p_j}{\rho_i^2} \nabla W_{ij} \label{eq:iisph-a-p-c_i}
+        m_j\frac{p_j}{\rho_j^2} \nabla W_{ij} \label{eq:iisph-a-p-c_i}
     \end{align}
-    which makes it easier to factor out the $p_i$ in the larger expression $\br{\mathds{A}\vek{p}}_{i}$ as follows:
+    which makes it easier to extract the $p_i$ in the larger expression $\br{\mathds{A}\vek{p}}_{i}$ as follows:
     \begin{align}
       \br{\mathds{A}\vek{p}}_{i}
       ={}&\Delta t^2 \sum_{j\in\mathcal{N}_i} m_j \vek{a}^p_{ij} \cdot \nabla W_{ij}
@@ -743,51 +745,52 @@ Once the fluid solver is completed, including one-way coupling to boundaries as 
       \end{split}
       &\textit{split $\vek{a}^p_{ij}$}
     \end{align}
+    Inserting \autoref{eq:iisph-a-p-c_i} for $\vek{a}_i^p, \vek{a}_j^p$ then yields:
     \begin{align*}
       \br{\mathds{A}\vek{p}}_{i}={}
         &\Delta t^2 \sum_{j\in\mathcal{N}_i} m_j 
          \br{p_i \vek{c}_i 
-         \underbrace{- \sum_{j\in\mathcal{N}_i\setminus\{i\}} m_j\frac{p_j}{\rho_i^2} \nabla W_{ij}}_{\textit{does not contribute, $j\neq i$}}
+         \underbrace{- \sum_{j\in\mathcal{N}_i\setminus\{i\}} m_j\frac{p_j}{\rho_j^2} \nabla W_{ij}}_{\textit{does not contribute, $j\neq i$}}
          } 
          \cdot \nabla W_{ij}
          &\textit{insert \autoref{eq:iisph-a-p-c_i}}\\
        &-\Delta t^2 \sum_{j\in\mathcal{N}_i} m_j 
          \br{
            \underbrace{p_j \vek{c}_j}_{\textit{no contribution for $i=j$ since $\nabla W_{ii}=0$}}
-           \underbrace{- \sum_{l\in\mathcal{N}_j\setminus\{j\}} m_l\frac{p_l}{\rho_j^2} \nabla W_{jl}}_{\textit{only contributes for $l=i$}}
+           \underbrace{- \sum_{l\in\mathcal{N}_j\setminus\{j\}} m_l\frac{p_l}{\rho_l^2} \nabla W_{jl}}_{\textit{only contributes for $l=i$}}
          }
          \cdot \nabla W_{ij}
          &{}\\
        % &-\Delta t^2 \sum_{j\in\mathcal{N}_i} m_j \br{\vek{a}^p_{j}} \cdot \nabla W_{ij}\\
        &+\Delta t^2 \sum_{k\in\mathcal{B}_i} m_k 
          \br{p_i \vek{c}_i 
-           \underbrace{- \sum_{j\in\mathcal{N}_i\setminus\{i\}} m_j\frac{p_j}{\rho_i^2} \nabla W_{ij}}_{\textit{does not contribute, $j\neq i$}}
+           \underbrace{- \sum_{j\in\mathcal{N}_i\setminus\{i\}} m_j\frac{p_j}{\rho_j^2} \nabla W_{ij}}_{\textit{does not contribute, $j\neq i$}}
          } 
          \cdot \nabla W_{ik}
          &{}
     \end{align*}
-    Note here that the index $l$ refers to the neighbours of the neighbours of particle $i$. Exactly one of these second-degree neighbours $l$ refers back to $i=l$ and therefore contains a $p_i$ that contributes to $\mathds{A}_{ii}$, all other terms in the sum are irrelevant. Also note that sums over $\mathcal{N}_i\setminus\{i\}$ explicitly do \textit{not} contain the term $p_i$ and can therefore be completely ignored. The coefficients of $p_i$ can now be extracted according to the annotations above:
+    Note here that the index $l$ refers to the neighbours of the neighbours of particle $i$. Exactly one of these second-degree neighbours $l$ refers back to $i=l$ and therefore contains a $p_i$ that contributes to $\mathds{A}_{ii}$, all other terms in the sum are irrelevant. Also note that sums over $\mathcal{N}_i\setminus\{i\}$ explicitly do \textit{not} contain the term $p_i$ and can therefore be completely ignored. With $\br{\mathds{A}\vek{p}}_i$ in a form that allows all coefficients of $p_i$ in the $i$-th equation of the system to be extracted, the diagonal element $\mathds{A}_{ii}$ can be obtained by taking the partial derivative with respect to $p_i$, resulting in:
     \equationnamed{Diagonal Element $\mathds{A}_{ii}$}{
       \begin{align}
         \begin{split}
-          \mathds{A}_{ii} &=\Delta t^2\sum_{j\in\mathcal{N}_i} m_j \vek{c}_i \cdot \nabla W_{ij}\\
+          \mathds{A}_{ii} = \frac{\partial \br{\mathds{A}\vek{p}}_i}{\partial p_i} &=\Delta t^2\sum_{j\in\mathcal{N}_i} m_j \vek{c}_i \cdot \nabla W_{ij}\\
           &+ \Delta t^2 \sum_{j\in\mathcal{N}_i} m_j \br{
-             \frac{m_i}{\rho_j^2}\nabla W_{ji}
+             \frac{m_i}{\rho_i^2}\nabla W_{ji}
           } \cdot \nabla W_{ij}\\
           &+\Delta t^2 \sum_{k\in\mathcal{B}_i} m_k 
             \vek{c}_i
           \cdot \nabla W_{ik}
         \end{split}\label{eq:iisph-diagonal-element}\\
-        \textit{where: \quad}\vek{c}_i &:= -\sum_{j\in\mathcal{N}_i} 
-        \frac{m_j}{\rho_i^2} \nabla W_{ij} 
+        \textit{where: \quad}\vek{c}_i &:= \frac{1}{\rho_i^2}\br{-\sum_{j\in\mathcal{N}_i} 
+        m_j \nabla W_{ij} 
        -\sum_{k\in\mathcal{B}_i} 
-        \frac{m_k}{\rho_i^2} \nabla W_{ik} 
+        m_k \nabla W_{ik} }
       \end{align}
     }
     
     The diagonal element depends only on the current positions, neighbour sets, masses and densities of the particles, all of which do not change within the simulation step, meaning the diagonal element can be computed once per time step after the density has been computed and then reused in each iteration of the iterative solver described in the following. 
     
-    It is also worth noting that both the specific boundary handling method described in \autoref{chp:rigid}, namely \autocite[consistent boundaries]{consistent-boundaries} with density mirroring, as well as the semi-implicit time integration scheme used in \autoref{eq:numerical-time-integration} and the operator splitting in \autoref{eq:operator-splitting} are baked into the expression for $\mathds{A}_{ii}$ and the diagonal element needs to be adjusted if any of these factors differ.
+    It is also worth noting that both the specific boundary handling method described in \autoref{chp:rigid}, namely \autocite[consistent boundaries]{consistent-boundaries} with density mirroring, as well as the semi-implicit time integration scheme used in \autoref{eq:numerical-time-integration} and the operator splitting in \autoref{eq:operator-splitting} are used in the derivation of the expression for $\mathds{A}_{ii}$ and the diagonal element needs to be adjusted if any of these components differ.
 
     Lastly, a slight variation of the algorithm was implemented based on the assumption that for strongly enforced incompressibility $\rho_i=\rho_j=\rho_0$ holds, namely all densities in the pressure solver and the pressure acceleration calculation were replaced with $\rho_0$. This not only allows a lot of refactoring of the terms for greater efficiency with fewer read operations to memory, but was hoped to result in a more robust solver. 
 
@@ -808,39 +811,52 @@ Once the fluid solver is completed, including one-way coupling to boundaries as 
 
 
   \subsubsection{Convergence Criteria}\label{subsec:iisph-convergence}
-  In order to detect the 
+  The Jacobi iteration in \autoref{eq:iisph-relaxed-jacobi-iteration} is repeated until the pressure values $p_i$ have converged to a solution that ensures incompressibility at the next time step, but the exact stopping criterion or convergence criterion has yet to be discussed. 
 
-  % The two constraints (\autoref{enum:continuity-equation-constraint-den} and \autoref{enum:continuity-equation-constraint-vel}) derived from the continuity equation result in two common source terms for the PPE \autocite{tutorial2019}:
-  % \begin{align}
-  %   \Delta t \Laplace \vek{p}_i &= \frac{1}{\Delta t}\br{\rho_o - \rho_i^*} 
-  %   &\textit{density invariance}\\
-  %   \Delta t \Laplace \vek{p}_i &= \rho_i \divergence \vek{v}_i^*
-  %   &\textit{divergence free velocities}
-  % \end{align}
-  % where $\rho_i^*$ is the predicted density due to non-pressure accelerations. We focus for now on the former source term,
+  In \autoref{subsec:jacobi-solver} the predicted density error $\br{\rho^{err}_i}^l = \br{\mathds{A}\vek{p}}_i-s_i$ that appears in the Jacobi update has already been mentioned. This predicted error is not exactly equal to the density error at the next time step since some approximations were made, for example when a repeated neighbourhood search was foregone in favour of calculating predicted density $\rho^*$ using the velocity divergence in \autoref{eq:ppe-rho-star}. However, the predicted density error is, by design, as close as possible to the actual density error at the next time step as can be, given the information available, and can be reused from \autoref{eq:iisph-relaxed-jacobi-iteration} at no additional computational cost, so it is often used \autocites{tutorial2019}{iisph}. 
+
+  Two predicted error metrics are commonly employed \autocite{iisph}:
+  \begin{align}
+    \rho^{l}_{max} &= \frac{1}{\rho_0}\max\br{\{\forall i\in\mathcal{N}_1^N: \br{\rho^{err}_i}^l\}} 
+    &\textit{Maximum predicted density error}\\
+    \rho^{l}_{avg} &= \frac{1}{\rho_0}\frac{1}{N}\sum_{i=1}^N \br{\rho^{err}_i}^l
+    &\textit{Average predicted density error}
+  \end{align}
+
+  The \autocite[authors of IISPH]{iisph} recommend iterating until the average predicted density error is below a threshold of $0.1\%$, such that no oscillations in the fluid are perceptible. The ratio of $\rho^{l}_{max}$ and $\rho^{l}_{avg}$ varies, so the authors argue that the keeping the maximum error fixed does not prevent visual artefacts that stem from varying average density, especially for tall fluid columns in complex scenes \autocite{iisph}. 
   
-  
-  % This means that the predicted velocity $\vek{v}_i^*$ causes some measured density $\rho_i^*$ that might exceed the reference rest density $\rho_0$, in which case the pressure forces solving the above equation project the predicted state onto an uncompressed state in which $\rho_i\br{t+\Delta t}\approx\rho_0$. 
+  On the other hand, recalling the particle deficiency phenomenon discussed in \autoref{subsec:particle-deficiency}, the average density can inadvertently be influenced by the geometry of the fluid, where a fluid with a large surface area and therefore many particles at the free surface can have its 'true' average density underestimated by the SPH discretization. This was found in this implementation to negatively impact simulations of, for example, shallow waters, where the solver might stop iterating prematurely because of this underestimation of average density. The maximum density metric does not suffer from this issue, so a conjunction of both convergence criteria was used in the implementation presented here to achieve more robust behaviour for arbitrary scenes. 
+
+  Note that the maximum predicted density error is a strict upper bound of the average predicted error, so the threshold for $\rho^{l}_{max}$ poses a stricter constraint and can be relaxed to $0.5\%$ for example.
+
+  The final convergence criterion is a boolean predicate on the predicted density errors $\br{\rho_i^{err}}^l$ in the $l$-th iteration and can be stated as:
+  \begin{equation}
+    \br{\rho^l_{avg} \leq \rho^{thresh}_{avg}}
+    \land \br{\rho^l_{max} \leq \rho^{thresh}_{max}}
+    \land \br{l_{min} \leq l \leq l_{max}}
+    \label{eq:convergence-criterion}
+  \end{equation}
+  where minimum and maximum solver iteration counts such as $l_{min}=3, l_{max}=\infty$ can be added to increase robustness and ensure reasonably converged pressure values to use when warm-starting the next iteration. Recommended choices for the threshold values are $\rho^{thresh}_{avg}=0.1\%$ \autocite{iisph} and $\rho^{thresh}_{max}=0.5\%$.
+
+  Using only upper bounds as thresholds, i.e. $\leq$ in \autoref{eq:convergence-criterion}, ensures that only compressions are penalized by the solver whereas a predicted density below rest density is allowed, since the particle deficiency phenomenon (see \autoref{subsec:particle-deficiency}) could otherwise cause the solver to never converge when the ratio of surface area to volume of the fluid in its current configuration is large and for example $\abs{\rho^l_{avg}} \leq \rho^{thresh}_{avg}$ would never be true. 
+
+  % This means that technically, the lowest pressure values that satisfy the convergence predicate should be obtained by the solver, but arbitrarily larger pressure values that cause an explosion of the fluid could also satisfy the convergence criterion \autoref{eq:convergence-criterion}. This could be the reason that warm-starting the solver can lead to decreased robustness, as an initial guess of pressure values that is too high could invite a valid but unphysically large solution to the PPE. In practice however, the Jacobi solver tends to be well-behaved when used as described in this report.
 
 
+    \section{Solver Variations and Degrees of Freedom}\label{sec:alternative-source-terms}
 
 
-
-
-
-    \newpage
-    \section{Alternative Source Terms and Variations}\label{sec:alternative-source-terms}
 \chapter{Weakly Coupled Rigid Bodies}\label{chp:rigid}
-    The fluid solver from \autoref{chp:fluid} is not quite complete without discussing the boundary conditions within which the mixed initial-boundary value problem is solved\autocite{tutorial2019}. A versatile method for discretizing boundary objects in a manner consistent with the SPH discretization of the fluid is discussed in \autoref{sec:boundary} \autocite{versatile-boundary-akinci}. While this already realizes one-way coupling of the fluid to a static boundary, a rigid body solver has to be developed and two-way coupled to the fluid solver to achieve interacting rigids and fluids. The prerequisite mass moments are discussed in \autoref{sec:mass-moments}, which are then used to implement a solver for rigid body kinematics in \autoref{sec:rigid-bodies}. Note that while fluids and rigids then interact, more challenging interactions such as rigid-rigid contacts with accurate friction that are an active area of research at time of writing \autocite{monolithic-rigids-timo} are not handled in this report.
+    The fluid solver from \autoref{chp:fluid} is not quite complete without discussing the boundary conditions within which the mixed initial-boundary value problem is solved \autocite{tutorial2019}. A versatile method for discretizing boundary objects in a manner consistent with the SPH discretization of the fluid is discussed in \autoref{sec:boundary} \autocite{versatile-boundary-akinci}. While this already realizes one-way coupling of the fluid to a static boundary, a rigid body solver has to be developed and two-way coupled to the fluid solver to achieve interacting rigids and fluids. The prerequisite mass moments are discussed in \autoref{sec:mass-moments}, which are then used to implement a solver for rigid body kinematics in \autoref{sec:rigid-bodies}. Note that while fluids and rigids then interact, more challenging interactions such as rigid-rigid contacts with accurate friction that are an active area of research at time of writing \autocite{monolithic-rigids-timo} are not handled in this report.
 
-    \section{Versatile and Robust Boundary Particles}\label{sec:boundary}
+    \section{Uniform and Robust Boundary Representation}\label{sec:boundary}
     %Various forces act upon a fluid when it is in contact with the surface of a boundary, from pressure forces that enforce non-penetration of the boundary over viscous forces depending on whether slip-, no-slip or other conditions are modelled and other forces such as the adhesion that results in capillary action, which are neglected in this instance. 
 
     A common idea in modelling boundary interactions in SPH is to discretize the boundary into particles and extend the SPH sums from \autoref{chp:sph} to include such boundary particles, which are treated in much the same way as fluid particles. This keeps the discretization of the governing equations consistent between fluid and boundary particles, using pressure forces of the incompressible fluid to guarantee non-penetration of the boundary while viscous forces or the absence thereof can realize slip or no-slip boundary conditions. 
 
     In order to extend the SPH sums over boundary particles, the quantities $m_k, \vek{x}_k $ and $ \vek{v}_k$ must be known for all boundary particles $k$. While $\vek{v}_k$ is zero for static boundaries and can be computed as outlined in \autoref{sec:rigid-bodies} otherwise, the remaining two quantities highlight two challenges in implementing such a boundary: the size of the boundary particles, which equates to their mass $m_k$, and the sampling of the boundary domain, which yields the $\vek{x}_k$.
 
-    \subsubsection{Sampling the Boundary}\label{subsec:sampling-the-boundary}
+    \subsection{Sampling and Initialization}\label{subsec:sampling-the-boundary}
     As will be outlined in the following, a single layer of non-uniformly distributed boundary particles on the surface of the boundary are sufficient to ensure accurate fluid-boundary interactions. This is helpful, since thin shells and complex triangular meshes should be able to be represented, which is generally not trivial or even possible when multiple layers of particles or particles of uniform size must be used. Instead, a non-uniform but low-discrepancy sampling of the boundary's surface is sought in this instance.
 
     Firstly, an input triangular mesh representing an arbitrary boundary geometry is approximated by a \emphasis{watertight manifold} with vertices that are roughly uniformly distributed across the surface using the method outlined by \autocite[Huang et al.]{mesh-watertight-manifold}. This method represents the geometry using an octree and reconstructs it by isosurface extraction before projecting the newly created vertices onto the original mesh to improve accuracy \autocite{mesh-watertight-manifold}.
@@ -910,7 +926,7 @@ Once the fluid solver is completed, including one-way coupling to boundaries as 
 
     In the implementation, the exact system is solved once initially, using \autoref{eq:boundary-mass-calculation-iterative}, since the one-off cost of the iterative solver is acceptable, but subsequent recalculations of masses due to dynamic boundaries are handled with a single application of the approximate formula \autoref{eq:boundary-mass-calculation} by \autocite[Akinci et al.]{versatile-boundary-akinci} to avoid additional runtime cost.
     
-    \subsubsection{Recalculating Masses}
+    \subsection{Dynamic and Procedural Boundaries}
     Not all boundaries are static: fluids might also interact with boundary particles representing dynamic rigid bodies simulated as described in \autoref{sec:rigid-bodies} or scripted boundaries, which behave according to some analytically specified equation of motion. In this implementation, scripted boundaries that implement rigid body translations were included, while rotations where neglected, since this limitation greatly simplifies the setting: given two equations $\vek{x}_{cm}(t), \vek{v}_{cm}(t)$, all boundary particles belonging to the same scripted object are shifted from their initial position by exactly $\vek{x}_{cm}(t)$ and all have the same velocity $\vek{v}_{cm}(t)$ at any point $t$ in time. 
 
     The previously discussed boundary handling can thankfully naturally handle intersecting boundaries. For example, a scripted boundary plane moving sinusoidally to produce waves may intersect a container of water. However, the masses of involved boundary particles might need to be recalculated so that the pressure forces exerted on the fluid by the boundary does not change where boundaries intersect. This is done according to two rules, which in conjunction conservatively estimate the set of boundary particles that need their masses recalculated according to \autoref{eq:boundary-mass-calculation} in each time step:
@@ -943,179 +959,9 @@ Once the fluid solver is completed, including one-way coupling to boundaries as 
     \end{equation}
     which is used to exert forces and torques upon dynamic rigid bodies in \autoref{sec:rigid-bodies}.
 
-    \section{Mass Moments of Triangular Meshes}\label{sec:mass-moments}
-    In order to create a rigid body solver in \autoref{sec:rigid-bodies}, one prerequisite is to know the total mass $M$, centre of mass $\vek{x}_{cm}$, volume $V$ and the inertia tensor $\mathds{I}$ of the rigid body being simulated. As an input to this computation, some arbitrary triangular mesh is given, which can be approximated by a watertight manifold using the algorithm discussed in \autoref{subsec:sampling-the-boundary}, which is in turn interpreted as the surface $\partial\Omega_{rigid}$ of some volume $\Omega_{rigid}$ that represents a rigid body of homogeneous density $\rho$. In other words, the mass moments necessary for the computation of $M,\mathds{I},\vek{x}_{cm}$ etc. of the closed triangular mesh of $\partial\Omega_{rigid}$ must be computed, in this case using a method by \autocite[Zhang and Chen]{efficient-feature-extraction}, which is outlined in the following. The mass density moments of the $\Omega_{rigid}$ are defined as an integral \autocite{efficient-feature-extraction}:
-    \begin{equation}\label{eq:mass-density-moments}
-      \mathcal{M}_{pqr} := \iiint_{\Omega_{rigid}} \rho x^p y^q z^r  \, dxdydz
-    \end{equation}
-    over the volume of the rigid body for some $p,q,r$, which means that the zero-th moment $p=q=r=0$ is the total mass of the object, the first moment $p=q=r=1$ is used to calculate the centre of mass, and the entries of the inertia tensor can be computed from some other $p,q,r \in \mathds{N}_0^2$ that are discussed in \autoref{subsubsec:inertia-tensor-computation}.
 
-    \subsubsection{Volume Integrals as Sums over Triangles}
-    
-    Using the fact that the input triangular mesh is now a closed manifold, there exists a method for computing the analytic mass moment of the mesh. 
-    
-    The method makes use of the notion of signed volumes $V'$ of tetrahedra, where given some vertex $O$ of a tetrahedron and the triangle $\triangle_{ABC}$ formed by its remaining, ordered vertices, it is assigned either a positive or a negative volume depending on whether the normal of the triangle $\triangle_{ABC}$ faces towards or away from $O$. Note that since the input mesh is now a watertight manifold, each connected component of the mesh defines an interior and an exterior, consists of triangles and can be stored in a consistent winding order such that the normals $\frac{\overrightarrow{AB} \times \overrightarrow{AC}}{\abs{\overrightarrow{AB} \times \overrightarrow{AC}}}$ all point towards the exterior, as is convention, or all point towards the interior. In this instance, counter-clockwise winding was used, but differing input meshes can be accounted for by flipping the sign of the signed volume accordingly.
-    
-    More traditionally, the integration domain $\Omega_{rigid}$ could be partitioned into a set of tetrahedra $\{\tetrahedron_i\}$ such that $\Omega_{rigid} = \bigcup_i \tetrahedron_i$ and $\forall i,j: \tetrahedron_i \cap \tetrahedron_j = \emptyset$ so that the integral can be written as:
-    \begin{equation}
-      \int_{\Omega_{rigid}} \,dV = \sum_{\tetrahedron_i} V\br{\tetrahedron_i}
-    \end{equation} where $V\br{\tetrahedron_i}$ is the volume of the $i$-th tetrahedron that can be computed analytically from its vertices. This would necessitate a decomposition into tetrahedra that is neither trivial nor efficient. 
-    
-    Instead, one fixed point $O$ anywhere in space can be chosen to construct tetrahedra $\tetrahedron_{ABCO}$ by simply summing over all the triangles $\triangle_{ABC}$ in the mesh and appending the vertex $O$ to form a tetrahedron. These tetrahedra no longer partition space, so a simple sum over their volumes would not yield the correct total volume of the domain but some possibly larger value. However, the crucial insight lies in the fact that summing up the signed volumes $V'\br{\tetrahedron_{ABCO}}$ with a consistent winding order as described above results in multiply accounted for volumes outside $\Omega_{rigid}$ exactly cancelling out, leaving only the volume inside $\Omega_{rigid}$, which is accounted for an odd number of times with alternating signs. This is conceptually simlar to how parity of the number of intersections along a ray is used to determine if a point lies inside a polygon as per the Jordan Curve theorem in \autoref{subsec:initial-conditions}, only the parity of faces with normals oriented towards or away from some vertex $O$ is now used to determine subvolumes inside or outside the mesh. \autoref{fig:volume-integral-triangle-mesh} might make this concept clearer by illustrating a concrete example in two dimensions. 
-    
-    %The intuition here is similar to the Jordan Curve theorem mentioned in \autoref{subsec:initial-conditions}: if a ray from an $O$ outside of the mesh to some point on $\triangle_{ABC}$ is imagined, then just as the number of intersections of the ray with $\partial\Omega_{rigid}$ indicates whether a point along the ray is inside or outside the domain depending on if the number of intersections is even or odd, the ray also alternates between intersecting faces with normals in or against the ray direction, and in consequence the volume containing some point on the ray is described by an even number of terms in the sum of signed volumes with alternating signs that therefore cancel to zero, or an odd number that is always negative or always positive. \autoref{fig:volume-integral-triangle-mesh} makes this much clearer by showing a concrete example in two dimensions. 
-
-    \begin{figure}
-      \begin{center}
-        \begin{asy}
-import geometry;
-import patterns;
-size(10cm);
-pair[] P = {(-1,2),(2,2.5),(5,4),(4,1)};
-pair[] directions = {W, NW, NE, SE};
-pair O = (1,0);
-
-pen hatchpen = black+opacity(0.8)+linewidth(0.1);
-add("hatch1",hatch(H=1.1mm, dir=NE, p=hatchpen));
-add("hatch2",hatch(H=1.1mm, dir=NW, p=hatchpen));
-
-pen style1 = red+opacity(0.2);
-pen style2 = blue+opacity(0.2);
-pen poly_pen = linewidth(1.0) + black;
-
-path poly = P[0];
-for (int i = 0; i < P.length; ++i) {
-  pair dir = directions[i % directions.length];
-  dot(P[i]);
-  label("$V_"+string(i)+"$", P[i], dir);
-  poly = poly -- P[i];
-}
-poly = poly -- cycle;
-draw(poly, poly_pen);
-
-dot(O); label("$O$", O, S);
-
-bool isNormalTowardsO(pair A, pair B, pair O) {
-  pair AB = B - A;
-  pair AO = O - A;
-  real cross = AB.x * AO.y - AB.y * AO.x;
-  return cross > 0;
-}
-
-for (int i = 0; i < P.length; ++i) {
-  pair A = P[i];
-  pair B = P[(i+1) % P.length]; 
-  if (isNormalTowardsO(A, B, O)) {
-    filldraw(A -- B -- O -- cycle, style1);
-  } else {
-    filldraw(A -- B -- O -- cycle, style2);
-  }
-}
-for (int i = 0; i < P.length; ++i) {
-  pair A = P[i];
-  pair B = P[(i+1) % P.length];
-  if (isNormalTowardsO(A, B, O)) {
-    fill(A -- B -- O -- cycle, pattern("hatch1"));
-  } else {
-    fill(A -- B -- O -- cycle, pattern("hatch2"));
-  }
-}
-          \end{asy}
-          \caption{In a figure similar to the one by \autocite[Zhang and Chen]{efficient-feature-extraction}, a volume integral using the described method of signed volumes is illustrated for a polygon with vertices $V_0,V_1,V_2,V_3$ and an additional vertex $O$ at the origin. Whereas in three dimensions, volumes of tetrahedra are added, and we sum over the triangles of a mesh, in this two-dimensional setting the areas of triangles are added in a sum over edges of the mesh. Positive signed areas are coloured blue and hatched along one diagonal, negative areas are red and hatched along the other diagonal. The purple, cross-hatched area outside the mesh is therefore added once and subtracted once, resulting in a net contribution to the total area of zero, while the area inside the polygon does not cancel out and remains as the result of the computation.}
-          \label{fig:volume-integral-triangle-mesh}
-        \end{center}
-    \end{figure}
-
-    Since the fixed point $O$ is arbitrary, the most computationally efficient choice is $O=\br{0,0,0}^T$. With this choice, the signed volume of any tetrahedron $\tetrahedron_{ABCO}$ can be defined as \autocites{efficient-feature-extraction}{explicit-exact-tetrahedron-formulas}:
-    \begin{align}
-      V'\br{\tetrahedron_{ABCO}} &= \frac{1}{6}\det\br{J\br{\tetrahedron_{ABCO}}}\\
-      &= \frac{1}{6}\det\br{\begin{bmatrix}
-      A_x&B_x&C_x\\A_y&B_y&C_y\\A_z&B_z&C_z
-      \end{bmatrix}}\\
-      &= \frac{1}{6}\br{\vek{A} \times \vek{B}} \cdot \vek{C}\label{eq:tetrahedron-signed-volume-determinant}
-    \end{align}
-    where $J$ denotes the Jacobian of the tetrahedron and the position vector of each vertex $\overrightarrow{OA}=\vek{A}$ etc. can be used in the Jacobian since $O$ was chosen to be the origin. The triple scalar product used to compute the determinant is anticommutative, so the order of any two of the vectors $\vek{A},\vek{B},\vek{C}$ in the expression above can be swapped to alternate the sign of the result, for example to account for a different winding order. With this, the volume integral can be written as a sum \autocite{efficient-feature-extraction}:
-    \begin{equation}\label{eq:tetrahedron-signed-volume-sum}
-      V\br{\Omega_{rigid}} = \int_{\Omega_{rigid}} \,dV = \abs{\sum_{\triangle_{ABC}} V'\br{\tetrahedron_{ABCO}}}
-    \end{equation}
-    From now on, it will be assumed that the winding order and the order of the vectors in \autoref{eq:tetrahedron-signed-volume-determinant} were chosen such that the sum of signed volumes are always positive and the absolute value $\abs{\cdot}$ in \autoref{eq:tetrahedron-signed-volume-sum} could be dropped. In other words, $\sum_{\triangle_{ABC}} V'\br{\tetrahedron_{ABCO}}$ being a positive quantity defines some function $\sgn\br{\tetrahedron_{ABCO}}\in\{-1,1\}$, which assigns a positive or negative weight to any tetrahedron $\tetrahedron_{ABCO}$, yielding the sign of its signed volume $V'$.
-
-    One of the greatest properties of this method, apart from its exact accuracy for closed meshes, is that it generalizes to any mass moments as defined in \autoref{eq:mass-density-moments} through the relation \autocite{efficient-feature-extraction}:
-    \begin{equation}\label{eq:mass-density-moments-using-signed-volume}
-      \mathcal{M}_{pqr} = \sum_{\triangle_{ABC}} \br{\sgn\br{\tetrahedron_{ABCO}} \cdot \iiint_{\Omega\br{ABCO}} \rho x^p y^q z^r  \,dV}
-    \end{equation}
-    where $\Omega\br{ABCO}$ is the domain of the tetrahedron $\tetrahedron_{ABCO}$, for which exact analytic solutions to the triple integral exist when homogeneous density is assumed, as outlined in \autoref{chp:analytic-tetrahedron-inertia}.
-    % Instead of integrating a quantity over a volume inside a triangular mesh by, for example, partitioning it into tetrahedra and summing up the analytic expressions for the integral over each tetrahedron, one additional fixed point $O$ anywhere in space can be used to construct a sum over tetrahedra $OABC$ for each triangle $ABC$ in the triangular mesh. 
-    
-    
-    % Whereas a volume integral $\int_{\Omega_{rigid}} \,dV$ can be written as the sum of volumes of tetrahedra $\sum_{ABCD} V_{ABCD}$ for each tetrahedron $ABCD$ that partitions $\Omega_{rigid}$, the integral can now also be written as the sum of signed volumes $\sum_{ABC} V_{ABCO}'$, which is simply a sum over the triangles $ABC$ in the triangular mesh and does not require a possibly expensive decomposition into tetrahedra. 
-    
-    % The crucial insight into why this method works is similar to the Jordan curve theorem, except the intuition is lifted from rays to volumes as per the Jordan any volume inside the rigid body domain is accounted for an odd number of times, volumes outside are accounted for an even number of times and the sign of the signed volume alternates at every intersection with the surface $\partial\Omega_{rigid}$.
-    
-    \subsubsection{Zeroth Mass Density Moment: Total Mass}
-    It follows that the total mass of a rigid body of homogeneous density $\rho$ is:
-    \begin{equation}\label{eq:total-rigid-body-mass}
-      M\br{\Omega_{rigid}} = \int_{\Omega_{rigid}} \rho \,dV= \mathcal{M}_{000}  = \sum_{\triangle_{ABC}} V'\br{\tetrahedron_{ABCO}} \rho  =:  \sum_{\triangle_{ABC}} M'\br{\tetrahedron_{ABCO}}
-    \end{equation}
-    which can be efficiently and conveniently computed for each face of the mesh in parallel and summed up using a parallel reduction.
-
-    \subsubsection{First Mass Density Moments: Centre of Mass}\label{subsubsec:centre-of-mass}
-    Describing changes of linear momentum of a rigid body is conveniently done by applying forces to the centre of mass, which is defined as:
-    \begin{equation}
-      \vek{x}_{cm}\br{\Omega_{rigid}} = \frac{1}{M\br{\Omega_{rigid}}}\int_{\Omega_{rigid}} \vek{x}' \cdot \rho\br{\vek{x}'} \, dV\br{\vek{x}'} = \frac{1}{\mathcal{M}_{000}}\begin{bmatrix}
-        \mathcal{M}_{100}\\
-        \mathcal{M}_{010}\\
-        \mathcal{M}_{001}
-      \end{bmatrix}
-    \end{equation}
-    Since the centre of mass of any tetrahedron is its centroid, the signed centre of mass of each tetrahedron in the sum can be given in terms of the signed mass $M'\br{\tetrahedron_{ABCO}}$ from \autoref{eq:total-rigid-body-mass}:
-    \begin{equation}
-      \vek{x}_{cm}\br{\tetrahedron_{ABCO}} = \frac{M'\br{\tetrahedron_{ABCO}}}{4}\br{\vek{A}+\vek{B}+\vek{C}}
-    \end{equation}
-    which means the centre of mass of the entire rigid body can be computed as:
-    \begin{equation}
-      \vek{x}_{cm} = \frac{1}{M} \sum_{\triangle_{ABC}}\vek{x}_{cm}\br{\tetrahedron_{ABCO}}
-    \end{equation}
-
-    \subsubsection{Second Mass Density Moments: Inertia Tensor}\label{subsubsec:inertia-tensor-computation}
-    To describe how torques create rotations of rigid bodies, the inertia of the body about any axis has to be known. The inertia can be thought of as the quotient of the angular momentum $\vek{L}$ and the angular velocity $\vek{\omega}$, yielding a second rank tensor $\mathds{I}$ which is a $3\times 3$ matrix in three dimensions with diagonal elements called \textit{moments of inertia} and non-diagonals referred to as \textit{products of inertia} \autocite{classical-mechanics}. The eigenvectors of the inertia tensor are the principal axes of rotation; it is a symmetric tensor with six degrees of freedom and is defined as \autocites{fast-accurate-polyhedral-mass-properties}{classical-mechanics}:
-    \begin{equation}\label{eq:inertia-tensor-long-definition}
-      \mathds{I} = \begin{bmatrix}
-        \int_\Omega \rho\br{x,y,z} \br{y^2+z^2} \,dV&
-        -\int_\Omega  \rho\br{x,y,z} xy \,dV&
-        -\int_\Omega  \rho\br{x,y,z} xz \,dV\\
-        -\int_\Omega  \rho\br{x,y,z} yx \,dV&
-        \int_\Omega  \rho\br{x,y,z} \br{x^2+z^2} \,dV&
-        -\int_\Omega  \rho\br{x,y,z} yz \,dV\\
-        -\int_\Omega  \rho\br{x,y,z} zx \,dV&
-        -\int_\Omega  \rho\br{x,y,z} zy \,dV&
-        \int_\Omega   \rho\br{x,y,z} \br{x^2+y^2} \,dV\\
-      \end{bmatrix}
-    \end{equation}
-    Note that the symmetry $I_{ab} = I_{ba}$ results in the six degrees of freedom and that for homogeneous density, $\rho$ can be moved out of the integral. Further, since $\int_\Omega x^2+y^2\,dV = \int_\Omega x^2\,dV + \int_\Omega y^2\,dV$, the inertia tensor can be written in terms of the mass density moments $\mathcal{M}_{pqr}$ as:
-    \begin{align}
-      \mathds{I} &= \begin{bmatrix}
-        I_{xx}&-I_{xy}&-I_{xz}\\
-        -I_{xy}&I_{yy}&-I_{yz}\\
-        -I_{xz}&-I_{yz}&I_{zz}
-      \end{bmatrix}\\
-      I_{xx} &= \mathcal{M}_{200}\\
-      I_{yy} &= \mathcal{M}_{020}\\
-      I_{zz} &= \mathcal{M}_{002}\\
-      I_{xy} &= \mathcal{M}_{100} + \mathcal{M}_{010}\\
-      I_{xz} &= \mathcal{M}_{100} + \mathcal{M}_{001}\\
-      I_{yz} &= \mathcal{M}_{010} + \mathcal{M}_{001}
-    \end{align}
-    where \autoref{eq:mass-density-moments-using-signed-volume} can be applied to calculate each invocation of $\mathcal{M}$ efficiently. In \autoref{eq:mass-density-moments-using-signed-volume}, the analytic solution to volume integrals over tetrahedra $\tetrahedron_{ABCO}$ are required, which in this instance have the form:
-    \begin{align}
-      \rho \int_{\Omega\br{ABCO}} x^2+y^2\, dV\\
-      \rho \int_{\Omega\br{ABCO}} xy\, dV
-    \end{align}
-    and analogously for the other two axes. These exact analytic expressions are cited from \autocite[Tonon]{explicit-exact-tetrahedron-formulas} and moved to \autoref{chp:analytic-tetrahedron-inertia} since they are rather verbose. Using \autoref{eq:inertia-appendix-final-eq}, the final inertia tensor $\mathds{I}$ can be computed. With this, all prerequisite quantities are known and a simple rigid body solver can be developed in \autoref{sec:rigid-bodies}.
-
-
-    \section{Rigid Body Dynamics}\label{sec:rigid-bodies}
-    With the mass properties of rigid bodies calculated in \autoref{sec:mass-moments}, the dynamics of unconstrained rigid bodies can be discussed in order to arrive at a solver which can be weakly coupled to the fluid solver from \autoref{chp:fluid}. Two-way coupling is achieved through two interfaces between the fluid and rigid solvers:
+    \section{Two-Way Coupled Rigid Body Solver}\label{sec:rigid-bodies}
+    Assuming the mass properties of rigid bodies outlined in \autoref{sec:mass-moments} are known, the dynamics of unconstrained rigid bodies can be discussed in order to arrive at a solver which can be weakly coupled to the fluid solver from \autoref{chp:fluid}. Two-way coupling is achieved through two interfaces between the fluid and rigid solvers:
     \begin{enumerate}
       \item By sampling the boundary of the rigid body as explained in \autoref{sec:boundary} and moving the boundary particles as the rigid body moves, contact with the fluid is resolved in the same way as for static boundaries which exhibit one-way coupling: pressure forces computed by the fluid solver in \autoref{sec:iisph} resolve penetrations and keep the fluid from leaking into the rigid body.
       \item On the other hand, the fluid must also exert forces and torques on the rigid body, influencing its movement and creating two-way coupling. This was alluded to in \autoref{force-on-bdy}, where the pressure force exerted on a boundary particle by a fluid particle was formulated.
@@ -1143,7 +989,7 @@ for (int i = 0; i < P.length; ++i) {
     \end{equation}
     where the position $\vek{x}_i$ in world space at which the force $\vek{f}_i$ acts upon the rigid body is relevant. Intuitively, the vector $\vek{\tau}_i$ can be understood as pointing in the axis of the rotation that a force $\vek{f}_i$ would cause if the rigid body was fixed at its centre of mass and left to spin \autocite{physically-based-rigids}.
     
-    \subsubsection*{Updating Rigid Body State}
+    \subsubsection{Updating Rigid Body State}
     Using the total input force $\vek{f}_{rigid}$ and torque $\vek{\tau}_{rigid}$, the state of the rigid body at the next time step $t+\Delta t$ must be computed from its current state. To obtain the updated position of the centre of mass $\vek{x}_{cm}\br{t+\Delta t}$ and the orientation $\mathds{O}\br{t+\Delta t}$ required to solve the equation of motion (\autoref{eq:rigid-body-equation-of-motion}), the corresponding differential quantities, namely the linear velocity $\vek{v}_{cm}$ and angular velocity $\vek{\omega}$ are required and are integrated with respect to time. 
 
     The linear velocity and updated centre of mass are straightforward and can be obtained using for example semi-implicit Euler time integration (\autoref{eq:numerical-time-integration}) from the linear acceleration described above as:
@@ -1166,7 +1012,7 @@ for (int i = 0; i < P.length; ++i) {
       \mathds{I}\br{t} &= \mathds{O}\br{t} \mathds{I}\br{t=0} \mathds{O}\br{t}^T\\
       \mathds{I}^{-1}\br{t} &= \mathds{O}\br{t} \mathds{I}^{-1}\br{t=0} \mathds{O}\br{t}^T
     \end{align}
-    in terms of the initial inertia tensor $\mathds{I}\br{t=0}$ that was computed in \autoref{subsubsec:inertia-tensor-computation}. Note that since $\mathds{O}$ is a rotation matrix, the transpose of the matrix is its inverse. 
+    in terms of the initial inertia tensor $\mathds{I}\br{t=0}$ that is computed in \autoref{subsubsec:inertia-tensor-computation}. Note that since $\mathds{O}$ is a rotation matrix, the transpose of the matrix is its inverse. 
 
     The orientation $\mathds{O}$ can be updated using:
     \begin{equation}\label{eq:rigid-orientation-update}
@@ -1186,8 +1032,8 @@ for (int i = 0; i < P.length; ++i) {
       &= \mathds{O}\br{t+\Delta t} \mathds{I}^{-1}\br{t=0} \mathds{O}\br{t+\Delta t}^T \vek{L}\br{t+\Delta t}
     \end{align}
 
-    \subsubsection*{Orthonormalization of $\mathds{O}$ and Quaternions}
-    In \autoref{eq:rigid-orientation-update}, the orientation was updated by explicitly numerically integrating a differential change in orientation. Unfortunately, after this process, the orientation $\mathds{O}$ is not guaranteed to be a rotation matrix any more. Numerical drift can lead to accumulating errors, potentially leading to an unphysical scaling or skew of the rigid body \autocite{physically-based-rigids}, indicated by the determinant $\det\br{\mathds{O}}$ becoming different from one. To prevent this, $\mathds{O}$ could be re-orthonormalized after every so often, using for example the Gram-Schmidt process. However, this would cause the error to be projected onto arbitrarily chosen axes that depend on the order of the basis vectors considered in the process. A more elegant approach is choosing a different representation of orientations that can alleviate this issue.
+    \subsubsection{Orthonormalization of $\mathds{O}$ and Quaternions}
+    In \autoref{eq:rigid-orientation-update}, the orientation is updated by explicitly numerically integrating a differential change in orientation. Unfortunately, after this process, the orientation $\mathds{O}$ is not guaranteed to be a rotation matrix any more. Numerical drift can lead to accumulating errors, potentially leading to an unphysical scaling or skew of the rigid body \autocite{physically-based-rigids}, indicated by the determinant $\det\br{\mathds{O}}$ becoming different from one. To prevent this, $\mathds{O}$ could be re-orthonormalized after every so often, using for example the Gram-Schmidt process. However, this would cause the error to be projected onto arbitrarily chosen axes that depend on the order of the basis vectors considered in the process. A more elegant approach is choosing a different representation of orientations that can alleviate this issue.
 
     One such representation are quaternions, which extend the concept of complex numbers to four instead of two dimensions. A quaternion $s + x i + y j + z k$ has, in addition to the imaginary unit $i$, the basis vectors $j$ and $k$, and can be represented by a single vector $\vek{q} = \br{s,x,y,z}^T$ in four dimensions or a pair $\left[s,\vek{v}\right]$ of a scalar $s$ and a vector $\vek{v}=\br{x,y,z}^T$ holding its coefficients \autocite{physically-based-rigids}. Using the second definition, quaternion multiplication can be written as \autocite{physically-based-rigids}:
     \begin{align}
@@ -1255,6 +1101,175 @@ for (int i = 0; i < P.length; ++i) {
     
 
     
+  \subsection{Exact Mass Moments of Watertight Meshes}\label{sec:mass-moments}
+  In order to implement the rigid body solver in \autoref{sec:rigid-bodies}, prerequisite include knowing the total mass $M$, centre of mass $\vek{x}_{cm}$, volume $V$ and the inertia tensor $\mathds{I}$ of the rigid body being simulated. As an input to this computation, some arbitrary triangular mesh is given, which can be approximated by a watertight manifold using the algorithm discussed in \autoref{subsec:sampling-the-boundary}, which is in turn interpreted as the surface $\partial\Omega_{rigid}$ of some volume $\Omega_{rigid}$ that represents a rigid body of homogeneous density $\rho$. In other words, the mass moments necessary for the computation of $M,\mathds{I},\vek{x}_{cm}$ etc. of the closed triangular mesh of $\partial\Omega_{rigid}$ must be computed, in this case using a method by \autocite[Zhang and Chen]{efficient-feature-extraction}, which is outlined in the following. The mass density moments of the $\Omega_{rigid}$ are defined as an integral \autocite{efficient-feature-extraction}:
+  \begin{equation}\label{eq:mass-density-moments}
+    \mathcal{M}_{pqr} := \iiint_{\Omega_{rigid}} \rho x^p y^q z^r  \, dxdydz
+  \end{equation}
+  over the volume of the rigid body for some $p,q,r$, which means that the zero-th moment $p=q=r=0$ is the total mass of the object, the first moment $p=q=r=1$ is used to calculate the centre of mass, and the entries of the inertia tensor can be computed from some other $p,q,r \in \mathds{N}_0^2$ that are discussed in \autoref{subsubsec:inertia-tensor-computation}.
+
+  \subsubsection{Volume Integrals as Sums over Triangles}
+  
+  Using the fact that the input triangular mesh is now a closed manifold, there exists a method for computing the analytic mass moment of the mesh. 
+  
+  The method makes use of the notion of signed volumes $V'$ of tetrahedra, where given some vertex $O$ of a tetrahedron and the triangle $\triangle_{ABC}$ formed by its remaining, ordered vertices, it is assigned either a positive or a negative volume depending on whether the normal of the triangle $\triangle_{ABC}$ faces towards or away from $O$. Note that since the input mesh is now a watertight manifold, each connected component of the mesh defines an interior and an exterior, consists of triangles and can be stored in a consistent winding order such that the normals $\frac{\overrightarrow{AB} \times \overrightarrow{AC}}{\abs{\overrightarrow{AB} \times \overrightarrow{AC}}}$ all point towards the exterior, as is convention, or all point towards the interior. In this instance, counter-clockwise winding was used, but differing input meshes can be accounted for by flipping the sign of the signed volume accordingly.
+  
+  More traditionally, the integration domain $\Omega_{rigid}$ could be partitioned into a set of tetrahedra $\{\tetrahedron_i\}$ such that $\Omega_{rigid} = \bigcup_i \tetrahedron_i$ and $\forall i,j: \tetrahedron_i \cap \tetrahedron_j = \emptyset$ so that the integral can be written as:
+  \begin{equation}
+    \int_{\Omega_{rigid}} \,dV = \sum_{\tetrahedron_i} V\br{\tetrahedron_i}
+  \end{equation} where $V\br{\tetrahedron_i}$ is the volume of the $i$-th tetrahedron that can be computed analytically from its vertices. This would necessitate a decomposition into tetrahedra that is neither trivial nor efficient. 
+  
+  Instead, one fixed point $O$ anywhere in space can be chosen to construct tetrahedra $\tetrahedron_{ABCO}$ by simply summing over all the triangles $\triangle_{ABC}$ in the mesh and appending the vertex $O$ to form a tetrahedron. These tetrahedra no longer partition space, so a simple sum over their volumes would not yield the correct total volume of the domain but some possibly larger value. However, the crucial insight lies in the fact that summing up the signed volumes $V'\br{\tetrahedron_{ABCO}}$ with a consistent winding order as described above results in multiply accounted for volumes outside $\Omega_{rigid}$ exactly cancelling out, leaving only the volume inside $\Omega_{rigid}$, which is accounted for an odd number of times with alternating signs. This is conceptually simlar to how parity of the number of intersections along a ray is used to determine if a point lies inside a polygon as per the Jordan Curve theorem in \autoref{subsec:initial-conditions}, only the parity of faces with normals oriented towards or away from some vertex $O$ is now used to determine subvolumes inside or outside the mesh. \autoref{fig:volume-integral-triangle-mesh} might make this concept clearer by illustrating a concrete example in two dimensions. 
+  
+  %The intuition here is similar to the Jordan Curve theorem mentioned in \autoref{subsec:initial-conditions}: if a ray from an $O$ outside of the mesh to some point on $\triangle_{ABC}$ is imagined, then just as the number of intersections of the ray with $\partial\Omega_{rigid}$ indicates whether a point along the ray is inside or outside the domain depending on if the number of intersections is even or odd, the ray also alternates between intersecting faces with normals in or against the ray direction, and in consequence the volume containing some point on the ray is described by an even number of terms in the sum of signed volumes with alternating signs that therefore cancel to zero, or an odd number that is always negative or always positive. \autoref{fig:volume-integral-triangle-mesh} makes this much clearer by showing a concrete example in two dimensions. 
+
+  \begin{figure}
+    \begin{center}
+      \begin{asy}
+import geometry;
+import patterns;
+size(10cm);
+pair[] P = {(-1,2),(2,2.5),(5,4),(4,1)};
+pair[] directions = {W, NW, NE, SE};
+pair O = (1,0);
+
+pen hatchpen = black+opacity(0.8)+linewidth(0.1);
+add("hatch1",hatch(H=1.1mm, dir=NE, p=hatchpen));
+add("hatch2",hatch(H=1.1mm, dir=NW, p=hatchpen));
+
+pen style1 = red+opacity(0.2);
+pen style2 = blue+opacity(0.2);
+pen poly_pen = linewidth(1.0) + black;
+
+path poly = P[0];
+for (int i = 0; i < P.length; ++i) {
+pair dir = directions[i % directions.length];
+dot(P[i]);
+label("$V_"+string(i)+"$", P[i], dir);
+poly = poly -- P[i];
+}
+poly = poly -- cycle;
+draw(poly, poly_pen);
+
+dot(O); label("$O$", O, S);
+
+bool isNormalTowardsO(pair A, pair B, pair O) {
+pair AB = B - A;
+pair AO = O - A;
+real cross = AB.x * AO.y - AB.y * AO.x;
+return cross > 0;
+}
+
+for (int i = 0; i < P.length; ++i) {
+pair A = P[i];
+pair B = P[(i+1) % P.length]; 
+if (isNormalTowardsO(A, B, O)) {
+  filldraw(A -- B -- O -- cycle, style1);
+} else {
+  filldraw(A -- B -- O -- cycle, style2);
+}
+}
+for (int i = 0; i < P.length; ++i) {
+pair A = P[i];
+pair B = P[(i+1) % P.length];
+if (isNormalTowardsO(A, B, O)) {
+  fill(A -- B -- O -- cycle, pattern("hatch1"));
+} else {
+  fill(A -- B -- O -- cycle, pattern("hatch2"));
+}
+}
+        \end{asy}
+        \caption{In a figure similar to the one by \autocite[Zhang and Chen]{efficient-feature-extraction}, a volume integral using the described method of signed volumes is illustrated for a polygon with vertices $V_0,V_1,V_2,V_3$ and an additional vertex $O$ at the origin. Whereas in three dimensions, volumes of tetrahedra are added, and we sum over the triangles of a mesh, in this two-dimensional setting the areas of triangles are added in a sum over edges of the mesh. Positive signed areas are coloured blue and hatched along one diagonal, negative areas are red and hatched along the other diagonal. The purple, cross-hatched area outside the mesh is therefore added once and subtracted once, resulting in a net contribution to the total area of zero, while the area inside the polygon does not cancel out and remains as the result of the computation.}
+        \label{fig:volume-integral-triangle-mesh}
+      \end{center}
+  \end{figure}
+
+  Since the fixed point $O$ is arbitrary, the most computationally efficient choice is $O=\br{0,0,0}^T$. With this choice, the signed volume of any tetrahedron $\tetrahedron_{ABCO}$ can be defined as \autocites{efficient-feature-extraction}{explicit-exact-tetrahedron-formulas}:
+  \begin{align}
+    V'\br{\tetrahedron_{ABCO}} &= \frac{1}{6}\det\br{J\br{\tetrahedron_{ABCO}}}\\
+    &= \frac{1}{6}\det\br{\begin{bmatrix}
+    A_x&B_x&C_x\\A_y&B_y&C_y\\A_z&B_z&C_z
+    \end{bmatrix}}\\
+    &= \frac{1}{6}\br{\vek{A} \times \vek{B}} \cdot \vek{C}\label{eq:tetrahedron-signed-volume-determinant}
+  \end{align}
+  where $J$ denotes the Jacobian of the tetrahedron and the position vector of each vertex $\overrightarrow{OA}=\vek{A}$ etc. can be used in the Jacobian since $O$ was chosen to be the origin. The triple scalar product used to compute the determinant is anticommutative, so the order of any two of the vectors $\vek{A},\vek{B},\vek{C}$ in the expression above can be swapped to alternate the sign of the result, for example to account for a different winding order. With this, the volume integral can be written as a sum \autocite{efficient-feature-extraction}:
+  \begin{equation}\label{eq:tetrahedron-signed-volume-sum}
+    V\br{\Omega_{rigid}} = \int_{\Omega_{rigid}} \,dV = \abs{\sum_{\triangle_{ABC}} V'\br{\tetrahedron_{ABCO}}}
+  \end{equation}
+  From now on, it will be assumed that the winding order and the order of the vectors in \autoref{eq:tetrahedron-signed-volume-determinant} were chosen such that the sum of signed volumes are always positive and the absolute value $\abs{\cdot}$ in \autoref{eq:tetrahedron-signed-volume-sum} could be dropped. In other words, $\sum_{\triangle_{ABC}} V'\br{\tetrahedron_{ABCO}}$ being a positive quantity defines some function $\sgn\br{\tetrahedron_{ABCO}}\in\{-1,1\}$, which assigns a positive or negative weight to any tetrahedron $\tetrahedron_{ABCO}$, yielding the sign of its signed volume $V'$.
+
+  One of the greatest properties of this method, apart from its exact accuracy for closed meshes, is that it generalizes to any mass moments as defined in \autoref{eq:mass-density-moments} through the relation \autocite{efficient-feature-extraction}:
+  \begin{equation}\label{eq:mass-density-moments-using-signed-volume}
+    \mathcal{M}_{pqr} = \sum_{\triangle_{ABC}} \br{\sgn\br{\tetrahedron_{ABCO}} \cdot \iiint_{\Omega\br{ABCO}} \rho x^p y^q z^r  \,dV}
+  \end{equation}
+  where $\Omega\br{ABCO}$ is the domain of the tetrahedron $\tetrahedron_{ABCO}$, for which exact analytic solutions to the triple integral exist when homogeneous density is assumed, as outlined in \autoref{chp:analytic-tetrahedron-inertia}.
+  % Instead of integrating a quantity over a volume inside a triangular mesh by, for example, partitioning it into tetrahedra and summing up the analytic expressions for the integral over each tetrahedron, one additional fixed point $O$ anywhere in space can be used to construct a sum over tetrahedra $OABC$ for each triangle $ABC$ in the triangular mesh. 
+  
+  
+  % Whereas a volume integral $\int_{\Omega_{rigid}} \,dV$ can be written as the sum of volumes of tetrahedra $\sum_{ABCD} V_{ABCD}$ for each tetrahedron $ABCD$ that partitions $\Omega_{rigid}$, the integral can now also be written as the sum of signed volumes $\sum_{ABC} V_{ABCO}'$, which is simply a sum over the triangles $ABC$ in the triangular mesh and does not require a possibly expensive decomposition into tetrahedra. 
+  
+  % The crucial insight into why this method works is similar to the Jordan curve theorem, except the intuition is lifted from rays to volumes as per the Jordan any volume inside the rigid body domain is accounted for an odd number of times, volumes outside are accounted for an even number of times and the sign of the signed volume alternates at every intersection with the surface $\partial\Omega_{rigid}$.
+  
+  \subsubsection{Zeroth Mass Density Moment: Total Mass}
+  It follows that the total mass of a rigid body of homogeneous density $\rho$ is:
+  \begin{equation}\label{eq:total-rigid-body-mass}
+    M\br{\Omega_{rigid}} = \int_{\Omega_{rigid}} \rho \,dV= \mathcal{M}_{000}  = \sum_{\triangle_{ABC}} V'\br{\tetrahedron_{ABCO}} \rho  =:  \sum_{\triangle_{ABC}} M'\br{\tetrahedron_{ABCO}}
+  \end{equation}
+  which can be efficiently and conveniently computed for each face of the mesh in parallel and summed up using a parallel reduction.
+
+  \subsubsection{First Mass Density Moments: Centre of Mass}\label{subsubsec:centre-of-mass}
+  Describing changes of linear momentum of a rigid body is conveniently done by applying forces to the centre of mass, which is defined as:
+  \begin{equation}
+    \vek{x}_{cm}\br{\Omega_{rigid}} = \frac{1}{M\br{\Omega_{rigid}}}\int_{\Omega_{rigid}} \vek{x}' \cdot \rho\br{\vek{x}'} \, dV\br{\vek{x}'} = \frac{1}{\mathcal{M}_{000}}\begin{bmatrix}
+      \mathcal{M}_{100}\\
+      \mathcal{M}_{010}\\
+      \mathcal{M}_{001}
+    \end{bmatrix}
+  \end{equation}
+  Since the centre of mass of any tetrahedron is its centroid, the signed centre of mass of each tetrahedron in the sum can be given in terms of the signed mass $M'\br{\tetrahedron_{ABCO}}$ from \autoref{eq:total-rigid-body-mass}:
+  \begin{equation}
+    \vek{x}_{cm}\br{\tetrahedron_{ABCO}} = \frac{M'\br{\tetrahedron_{ABCO}}}{4}\br{\vek{A}+\vek{B}+\vek{C}}
+  \end{equation}
+  which means the centre of mass of the entire rigid body can be computed as:
+  \begin{equation}
+    \vek{x}_{cm} = \frac{1}{M} \sum_{\triangle_{ABC}}\vek{x}_{cm}\br{\tetrahedron_{ABCO}}
+  \end{equation}
+
+  \subsubsection{Second Mass Density Moments: Inertia Tensor}\label{subsubsec:inertia-tensor-computation}
+  To describe how torques create rotations of rigid bodies, the inertia of the body about any axis has to be known. The inertia can be thought of as the quotient of the angular momentum $\vek{L}$ and the angular velocity $\vek{\omega}$, yielding a second rank tensor $\mathds{I}$ which is a $3\times 3$ matrix in three dimensions with diagonal elements called \textit{moments of inertia} and non-diagonals referred to as \textit{products of inertia} \autocite{classical-mechanics}. The eigenvectors of the inertia tensor are the principal axes of rotation; it is a symmetric tensor with six degrees of freedom and is defined as \autocites{fast-accurate-polyhedral-mass-properties}{classical-mechanics}:
+  \begin{equation}\label{eq:inertia-tensor-long-definition}
+    \mathds{I} = \begin{bmatrix}
+      \int_\Omega \rho\br{x,y,z} \br{y^2+z^2} \,dV&
+      -\int_\Omega  \rho\br{x,y,z} xy \,dV&
+      -\int_\Omega  \rho\br{x,y,z} xz \,dV\\
+      -\int_\Omega  \rho\br{x,y,z} yx \,dV&
+      \int_\Omega  \rho\br{x,y,z} \br{x^2+z^2} \,dV&
+      -\int_\Omega  \rho\br{x,y,z} yz \,dV\\
+      -\int_\Omega  \rho\br{x,y,z} zx \,dV&
+      -\int_\Omega  \rho\br{x,y,z} zy \,dV&
+      \int_\Omega   \rho\br{x,y,z} \br{x^2+y^2} \,dV\\
+    \end{bmatrix}
+  \end{equation}
+  Note that the symmetry $I_{ab} = I_{ba}$ results in the six degrees of freedom and that for homogeneous density, $\rho$ can be moved out of the integral. Further, since $\int_\Omega x^2+y^2\,dV = \int_\Omega x^2\,dV + \int_\Omega y^2\,dV$, the inertia tensor can be written in terms of the mass density moments $\mathcal{M}_{pqr}$ as:
+  \begin{align}
+    \mathds{I} &= \begin{bmatrix}
+      I_{xx}&-I_{xy}&-I_{xz}\\
+      -I_{xy}&I_{yy}&-I_{yz}\\
+      -I_{xz}&-I_{yz}&I_{zz}
+    \end{bmatrix}\\
+    I_{xx} &= \mathcal{M}_{200}\\
+    I_{yy} &= \mathcal{M}_{020}\\
+    I_{zz} &= \mathcal{M}_{002}\\
+    I_{xy} &= \mathcal{M}_{100} + \mathcal{M}_{010}\\
+    I_{xz} &= \mathcal{M}_{100} + \mathcal{M}_{001}\\
+    I_{yz} &= \mathcal{M}_{010} + \mathcal{M}_{001}
+  \end{align}
+  where \autoref{eq:mass-density-moments-using-signed-volume} can be applied to calculate each invocation of $\mathcal{M}$ efficiently. In \autoref{eq:mass-density-moments-using-signed-volume}, the analytic solution to volume integrals over tetrahedra $\tetrahedron_{ABCO}$ are required, which in this instance have the form:
+  \begin{align}
+    \rho \int_{\Omega\br{ABCO}} x^2+y^2\, dV\\
+    \rho \int_{\Omega\br{ABCO}} xy\, dV
+  \end{align}
+  and analogously for the other two axes. These exact analytic expressions are cited from \autocite[Tonon]{explicit-exact-tetrahedron-formulas} and moved to \autoref{chp:analytic-tetrahedron-inertia} since they are rather verbose. Using \autoref{eq:inertia-appendix-final-eq}, the final inertia tensor $\mathds{I}$ can be computed. With this, all quantities are known and a simple rigid body solver as discussed in \autoref{sec:rigid-bodies} can be implemented.
 
 
 \chapter{Visualization}\label{chp:visualization}
