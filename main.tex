@@ -1147,15 +1147,15 @@ Once the fluid solver is completed, including one-way coupling to boundaries as 
 
 
     \subsubsection{Greedy Time Step Size Control}
-    The performance function changes with time. Consider for example a scene with a flat, water-filled basin flowing into a tall container: at first, the maximum height of any water column in the scene is low, but it later increases, changing the performance-optimal time step size. However, it can be reasonably assumed that such changes to $\hat{P}_{k,t}$ occur on a timescale much larger than that of individual time steps $\Delta t$, for example on the scale of seconds in scenes where $\Delta t$ is on the scale of milliseconds. For now, it can be assumed that $\hat{P}_k$ is approximately constant on the scale of more time steps than necessary to find an optimum of $\hat{P}$. Perhaps the simplest method for finding such an optimum would then be a greedy \emphasis{Monte Carlo Local Search}. This method explores values in the neighbourhood of the current time step size $\Delta t_k$ using random sampling from some proposal distribution $\mathcal{P}$, which is in this case simply taken to be the normal distribution with some variance such as $\sigma^2=10^{-5}\sec$ that is small compared to the expected time step size:
+    The performance function changes with time. Consider for example a scene with a flat, water-filled basin flowing into a tall container: at first, the maximum height of any water column in the scene is low, but it later increases, changing the performance-optimal time step size. However, it can be reasonably assumed that such changes to $\hat{P}_{k,t}$ occur on a timescale much larger than that of individual time steps $\Delta t$, for example on the scale of seconds in scenes where $\Delta t$ is on the scale of milliseconds. For now, it can be assumed that $\hat{P}_k$ is approximately constant on the scale of more time steps than necessary to find an optimum of $\hat{P}$. Perhaps the simplest method for finding such an optimum would then be a greedy \emphasis{Monte Carlo Local Search}. This method explores values in the neighbourhood of the current time step size $\Delta t_k$ using random sampling from some proposal distribution $\mathcal{P}$, which is in this case simply taken to be the normal distribution with some variance such as $\sigma^2_\mathcal{P}=10^{-6}\sec$ that is orders of magnitude smaller than the the expected time step size:
     \equationnamed{Proposal Distribution}{
     \begin{equation}
-      \mathcal{P} = \mathcal{N}\br{\mu = \Delta t_k, \sigma^2}
+      \mathcal{P} = \mathcal{N}\br{\mu = \Delta t_k, \sigma^2_\mathcal{P}}
     \end{equation}
     }
 
     Values that yield higher performance are then greedily accepted, all other proposals are rejected. The algorithm is outlined in Algorithm \ref{alg:local-search}.
-    Note that the variance of the proposal distribution is an important hyperparameter: too high a value will mean sudden jumps in time step size, which can greatly impact the stability of the solver in this application. Variance that is too small will lead to slow convergence to optimal time step sizes, which is not ideal but more tolerable than instability, so a conservatively low choice of $\sigma^2$ is recommended.
+    Note that the variance of the proposal distribution is an important hyperparameter: too high a value will mean sudden jumps in time step size, which can greatly impact the stability of the solver in this application. Variance that is too small will lead to slow convergence to optimal time step sizes, which is not ideal but more tolerable than instability, so a conservatively low choice of $\sigma^2_\mathcal{P}$ is recommended.
 
     \begin{algorithm}
       \caption{Monte Carlo Local Search}
@@ -1260,8 +1260,8 @@ Once the fluid solver is completed, including one-way coupling to boundaries as 
           % ] {0.234-y>0?x/ln((1-y)/(0.234-y)) * ln(1/0.234):0};
         \end{axis}
       \end{tikzpicture}
-      \caption{The temperature $T\br{\chi=0.234}$, normalized from $[0;T_{max}]$ to $[0;1]$ is plotted for differing rates of improving proposals $z$ and average loss of non-improving proposals $\Delta \hat{P}^-$. Note that the function is scale-invariant in $\Delta\hat{P}^-$, i.e. if the temperature is normalized between its minimum and maximum values to values in $[0;1]$ then the shape of the graph does not change if $\Delta\hat{P}^-$ is plotted from zero to one or from zero to any other positive number. This scale-invariance beautifully shows that the unit of measurement of performance has no impact on the behaviour of the algorithm, which is intended. 
-      The plot can be interpreted by assuming lower temperature values mean more greedy behaviour, while higher temperatures result in more exploration. As the target rate of acceptance $\chi=0.234$ is approached or surpassed by the rate of improving proposals the algorithm behaves more greedily. When many proposals are disimprovements and the more unfavourable they are, the more the temperature must increase so that the acceptance probability increases and the target acceptance rate can be kept up, enabling further exploration.}
+      \caption{The temperature $T\br{\chi=0.234}$, normalized from $[0;T_{max}]$ to $[0;1]$ is plotted for differing rates of improving proposals $z$ and average loss of non-improving proposals $\Delta \hat{P}^-$. Note that the function is scale-invariant in $\Delta\hat{P}^-$, i.e. if the temperature is normalized between its minimum and maximum values to values in $[0;1]$ then the shape of the graph does not change if $\Delta\hat{P}^-$ is plotted from zero to one or from zero to any other positive number. This scale-invariance shows that the unit of measurement of performance has no impact on the behaviour of the algorithm, which is intended. 
+      The plot can be interpreted by assuming lower temperature values mean more greedy behaviour, while higher temperatures result in more exploration. When the rate of improving proposals $z$ is higher than the target acceptance rate $\chi$, the algorithm is strictly greedy. As the rate of improving proposals drops below the threshold, and particularly as $\Delta \hat{P}^-$ increases and the proposals get worse, the temperature increases so that the acceptance rate can be pushed up to the target level of $\chi$. This means that when improvement becomes stale or the current optimum is no longer valid and proposals get worse, the temperature increases to enable more exploration in hopes of discovering a better time step size $\Delta t$.}
       \label{fig:temperature}
     \end{figure}
 
@@ -1271,7 +1271,9 @@ Once the fluid solver is completed, including one-way coupling to boundaries as 
     To provide this flexibility at the cost of possibly oscillating about an optimal time step size, the changes of $\hat{P}$ can be estimated to occur on an order of $1\sec \gg \Delta t$ and a time horizon of $1\sec$ is introduced, beyond which observations are forgotten. Instead of calculating $T\br{\chi}$ from \autoref{eq:c-from-chi} using all observed proposals, only proposals made in the last second are considered and proposals beyond this time horizon do not contribute to the values $a$, $r$ and $\Delta \hat{P}^-$. This results in scheme that flexibly increases the temperature as to keep the rate of improving proposals in the last second of simulated time above the threshold $\chi=0.234$. 
 
 
-    Lastly, the fact that the time controller is in a \textit{delayed} feedback loop and changes to the time step size might only see effects to performance after some iterations is taken into account. This delay can be accounted for and the performance function $\hat{P}$ can be made yet less noisy by dividing the simulation so-called episodes $E=\{k, k+1, \dots, k+K_{E}-1\}$, in this case of $K_{E}=10$ time steps each. The total performance score in \autoref{eq:perf-hat-defintion} applied to one episode then becomes:
+    Lastly, the fact that the time controller is in a \textit{delayed} feedback loop and changes to the time step size might only see effects to performance after some iterations is taken into account. This delay can be accounted for and the performance function $\hat{P}$ can be made yet less noisy by dividing the simulation so-called episodes $E=\{k, k+1, \dots, k+K_{E}-1\}$, in this case of $K_{E}=10$ time steps each. This makes rewards for a good proposal of $\Delta t'$ more likely to be captured by the performance score of the corresponding episode, instead of rewarding some later, possibly unrelated proposal.
+    
+    The total performance score in \autoref{eq:perf-hat-defintion} applied to one episode then becomes:
     \begin{equation}\label{eq:episode-performance}
       \hat{P}\br{E} = \frac{
         \sum_{k\in E} \Delta t_k
@@ -1279,9 +1281,9 @@ Once the fluid solver is completed, including one-way coupling to boundaries as 
         K_{E}\cdot \bar{T}_{const} + \br{\sum_{k\in E} l_k} \cdot \bar{T}_{iter}
       }
     \end{equation}
-    while variance $\sigma^2$ of the proposal distribution is scaled by the steps per episode $K_E$:
+    while variance $\sigma^2_\mathcal{P}$ of the proposal distribution is simply linearly scaled by the steps per episode $K_E$ because the proposed changes to $\Delta t$ are uncorrelated:
     \begin{equation}\label{eq:episode-proposal}
-      \mathcal{P} = \mathcal{N}\br{\mu = \Delta t_k, K_{E}\cdot\sigma^2}
+      \mathcal{P} = \mathcal{N}\br{\mu = \Delta t_k, K_{E}\cdot\sigma^2_\mathcal{P}}
     \end{equation}
     This results in the time step controller shown in Algorithm \ref{alg:time-step-controller}. This controller was tested on both dam-break and static water column scenarios and found to converge on time step sizes close to the optimum obtained by hand-tuning parameters for performance.
 
@@ -1415,7 +1417,7 @@ Once the fluid solver is completed, including one-way coupling to boundaries as 
 
     In the implementation, the exact system is solved once initially, using \autoref{eq:boundary-mass-calculation-iterative}, since the one-off cost of the iterative solver is acceptable, but subsequent recalculations of masses due to dynamic boundaries are handled with a single application of the approximate formula \autoref{eq:boundary-mass-calculation} by \autocite[Akinci et al.]{versatile-boundary-akinci} to avoid additional runtime cost.
     
-    \subsection{Dynamic and Procedural Boundaries}
+    \subsection{Dynamic and Procedural Boundaries}\label{sec:dynamic-and-procedural-bdy}
     Not all boundaries are static: fluids might also interact with boundary particles representing dynamic rigid bodies simulated as described in \autoref{sec:rigid-bodies} or procedural boundaries, which behave according to some analytically specified equation of motion. In this implementation, procedural boundaries that implement rigid body translations were included, while rotations where neglected, since this limitation greatly simplifies the setting: given two equations $\vek{x}_{cm}(t), \vek{v}_{cm}(t)$, all boundary particles belonging to the same scripted object are shifted from their initial position by exactly $\vek{x}_{cm}(t)$ and all have the same velocity $\vek{v}_{cm}(t)$ at any point $t$ in time. 
 
     The previously discussed boundary handling can thankfully naturally handle intersecting boundaries. For example, a scripted boundary plane moving sinusoidally to produce waves may intersect a container of water. However, the masses of involved boundary particles might need to be recalculated so that the pressure forces exerted on the fluid by the boundary does not change where boundaries intersect. This is done according to two rules, which in conjunction conservatively estimate the set of boundary particles that need their masses recalculated according to \autoref{eq:boundary-mass-calculation} in each time step:
@@ -1768,10 +1770,26 @@ if (isNormalTowardsO(A, B, O)) {
   While \autoref{subsec:sampling-the-boundary} is concerned with the sampling of particles on a triangular mesh, visualization of the simulated scene requires a reconstruction of triangular meshes for rendering. To this end, simulated rigid bodies must be correctly displayed, the surface of the fluid in the case of hydrodynamic simulations must be reconstructed (unlike the simulation of e.g. air, which would require some other form of visualization) and diffuse particles representing spray, foam and air bubbles that are particularly prominent in large-scale liquid simulations can be generated to greatly improve the visual realism of the scene \autocite{unified-spray-foam-bubbles}, all of which is outlined in the following chapter. The focus of this report lies on the synthesis of photorealistic videos of virtual scenes, while scientific visualizations such as sensor planes (as observed in e.g. \autocite[this paper]{compressed-neighbour-lists}) or streamline plots are not discussed.
   
 
-  Note that the time step size $\Delta t$ of the simulation is typically on scales of temporal resolution much finer than what is required to display a smooth video ($\Delta t \ll 16\si{\mu\second} = \Delta t_{frame}$ for 60 frames per second), which means that only relatively few points in time must be visualized, which reduces computational cost. For sufficiently small step sizes $\Delta t$, one can simply export the simulation data at each of the smallest values of $t$ larger than some integer multiple of the frame time $t_{frame}$. Other methods, such as interpolating the simulation results temporally to the exact point in time $i\in\mathds{N}: i\cdot t_{frame}$ shown in the $i$-th frame are also conceivable.
+  Note that the time step size $\Delta t$ of the simulation is typically on scales of temporal resolution much finer than what is required to display a smooth video ($\Delta t \ll 16\si{\mu\second} = \Delta t_{frame}$ for 60 frames per second), which means that only relatively few points in time must be visualized, which reduces computational cost. For sufficiently small step sizes $\Delta t$, one can simply visualize the simulation data at each of the smallest values of $t$ larger than some integer multiple of the frame time $t_{frame}$. Other methods, such as interpolating the simulation results temporally to the exact point in time $i\in\mathds{N}: i\cdot t_{frame}$ shown in the $i$-th frame are also conceivable.
 
   \subsubsection{Visualizing Boundaries}
+  The visualization of boundaries is trivial in the case of static boundaries: exactly the triangular mesh that served as input to the particle sampling, e.g. as described in \autoref{subsec:sampling-the-boundary}, can be used for visualization.
+
+  Procedural boundaries as described in \autoref{sec:dynamic-and-procedural-bdy} are similarly unproblematic as they simply require a translational offset defined by $\vek{x}_{cm}\br{t}$ or an additional rotation about their centre of mass (which was not described in this report). 
+
+  Dynamic rigid bodies on the other hand, if implemented as described in \autoref{sec:rigid-bodies} should be noted to be described in body space with the centre of mass at the origin, not in the global coordinate system. Since transformation do not generally commute, this means that before the rotation encoded by the orientation matrix $\mathds{O}$, or equivalently the quaternion $\vek{q}$, can be applied to the body, the centre of mass of the object that the rotation refers to must be set as the origin. For a body with an initial centre of mass $\vek{x}_{cm}\br{t=0}$ in global coordinates, one must:
+  \begin{enumerate}
+    \item translate the centre of mass to the origin by adding $-\vek{x}_{cm}\br{t=0}$
+    \item apply the rotation encoded by $\mathds{O}\br{t}$ or $\vek{q}\br{t}$
+    \item translate the rotated body to its current position by adding $\vek{x}_{cm}\br{t}$
+  \end{enumerate}
+  to every vertex of the input mesh at $t=0$. Since only rigid body dynamics are described in this report and deformations of the mesh therefore do not occur, this procedure suffices to render the effects of the solver.
+
+
   \subsubsection{Visualizing the Fluid}
+  The fluid is less
+
+
   \section{Spray, Foam and Bubble Generation}
     \newpage
     \section{Rendering}
