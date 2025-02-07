@@ -3,6 +3,12 @@ sources
 main-*
 main.bbl-SAVE-ERROR
 ltex*
+!dbnsymb.mf
+.DS_Store
+
+*.dat 
+*.script
+tikzmain-*
 
 ## Core latex/pdflatex auxiliary files:
 *.aux

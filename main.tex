@@ -1786,9 +1786,35 @@ if (isNormalTowardsO(A, B, O)) {
   to every vertex of the input mesh at $t=0$. Since only rigid body dynamics are described in this report and deformations of the mesh therefore do not occur, this procedure suffices to render the effects of the solver.
 
 
-  \subsubsection{Visualizing the Fluid}
-  The fluid is less
+  \section{Surface Reconstruction}
+  The fluid is less trivial to visualize, since an explicit representation of the fluid surface is not usually part of the simulation and must instead be reconstructed from the explicitly computed quantities in a post-processing step. Although methods that \autocite[explicitly operate on a surface representation]{surface-only-fluids} exist, most simulation methods in which field quantities are computed throughout the continuum rely on an isosurface reconstruction of a scalar field to construct a surface mesh from a set of particle positions. In this report, the \texttt{splashsurf} utility implementing \autocite[Weighted Laplacian Smoothing for Surface Recontruction]{laplacian-surf-reconst} was used, the main concepts of which are outlined in the following.
+  
+  It is intuitively clear that the density field, for example, is suited to indicating whether any point in space lies within or outside of the fluid: a density near the rest density of the fluid certainly implies that a point is inside the fluid volume, while a density close to zero certainly belongs to a point outside of the fluid. The fluid surface can then be approximated by an isosurface of some threshold value $t$, which can be set ad-hoc to yield visually plausible results. Assuming that particles have (approxmately, see \autoref{subsec:initial-conditions}) uniform sizes and masses, a commonly used alternative to the density field that is suited for post-processing scenarios where only particle positions are known is the so-called \emphasis{colour field}, which can be defined as the standard SPH discretization (\autoref{eq:sph-sum}) of the indicator field of the fluid volume and which is therefore closely related to the density field \autocite{laplacian-surf-reconst}:
+  \begin{equation}\label{eq:colour-field-def}
+    \angled{1}\br{\vek{x}} = \sum_{j\in\mathcal{N}_{\vek{x}}} \frac{m_j}{\rho_j} W(\vek{x}-\vek{x}_j, \hbar)
+  \end{equation}
+  
+  Recall from \autoref{sec:sph-discretization} that the SPH interpolation scheme is valid not only at particle positions $\vek{x}_i$ but at any position $\vek{x}$ in space, as observed in the definition of the colour field in \autoref{eq:colour-field-def}. This means that a common building block in surface reconstruction can be applied here, namely the \emphasis{Marching Cubes Algorithm} \autocite{marching-cubes}. This algorithm subdivides space into a uniform grid of cubes and classifies each of the resulting vertices as \textit{inside} or \textit{outside} of a volume depending on whether a scalar field at the vertex position is above or below the threshold $t$. It follows that the surface of the volume must lie between each adjacent pair of vertices that have differing in-out classifications, resulting in $2^3=256$ possible triangle topologies per 3-dimensional cube under consideration \autocite{marching-cubes}. The corresponding triangle topology can therefore simply be stored in a table and looked up. The approximate position of the surface vertex along each edge of the uniform grid can be found through linear interpolation. More conretely this means that the sign of a potential \autocite{laplacian-surf-reconst}:
+  \begin{align}
+    \Phi(\vek{x}) &= \angled{1}\br{\vek{x}} - t &\textit{see \autoref{eq:colour-field-def}}
+  \end{align} 
+  the zero-set of which is the surface, can be used to classify vertices as inside or outside ($\vek{x}_{in}, \vek{x}_{out}$). The surface vertex $\vek{x}_s$ between two such vertices can be approximated via linear interpolation as \autocite{laplacian-surf-reconst}:
+  \begin{align}
+    \vek{x}_s = \vek{x}_{out} + \frac{t-\Phi(\vek{x}_{out})}{\Phi(\vek{x}_{in})-\Phi(\vek{x}_{out})} \br{\vek{x}_{in}-\vek{x}_{out}}
+  \end{align}
+  
+  Even if the Marching Cubes algorithm is executed at a resolution much finer than the expected particle spacing $h$ so that individual particles and splashes are resolved, the result can unfortunately include many \textit{bumps} resulting from the limited resolution of both the particle sampling and the reconstruction. To combat this, especially in regions that are supposed to represent flat, planar regions, explicit \emphasis{Laplacian Smoothing} can be applied to the resulting surface mesh \autocite{laplacian-surf-reconst}. In this procedure, vertices of the surface mesh obtained from marching cubes are interpolated using some weight $\lambda\in[0;1]$ towards the average position of all vertices that are immeadiate-edge neighbours of the vertex under consideration. While this diffusion process does result in less curvature, smoothing out planar regions of the surface, it can also cause volume shrinkage, especially for droplets and splashes that may collapse in on themselves \autocite{laplacian-surf-reconst}. Instead, as the name of the \autocite[Weighted Laplacian Smoothing]{laplacian-surf-reconst} implies, weights $\lambda$ can be employed that produce more smoothing in planar regions, where higher neighbour counts of particles can be measured, and less smoothing for isolated particles and splashes, where particles $i$ have a smaller number of neighbours $\abs{\mathcal{N_{i}}}$ \autocite{laplacian-surf-reconst}. The neighbour count can be interpolated to vertex positions via standard SPH interpolation $\angled{\cdot}$ (\autoref{eq:sph-sum}), clamped to a maximum value $N_{HS}$ that is achieved in a planar, half-space particle configuration and finally a smoothestep function such as $S(x)=6x^5-15x^4+10x^3$ can be used to distribute the resulting values in the $[0;1]$ interval required of the weights $\lambda$, resulting in \autocite{laplacian-surf-reconst}:
+  \begin{align}
+    \lambda\br{\vek{x}} &= S\br{\max\br{1, \frac{\angled{\abs{\mathcal{N}}}}{N_{HS}\angled{1}}}}\\
+    \angled{\abs{\mathcal{N}}} &= \sum_{j\in\mathcal{N}_{\vek{x}}} \frac{m_j}{p_j} \abs{\mathcal{N}_j} W\br{\vek{x}-\vek{x}_j, \hbar}
+  \end{align}
+  With these weights, each vertex $\vek{x}_i^k$ in the $k$-th smoothing iteration can be moved towards the average position $\bar{\vek{x}}_i$ of neighbouring vertices using \autocite{laplacian-surf-reconst}:
+  \begin{equation}
+    \vek{x}_i^{k+1} = \vek{x}_i^{k} + \lambda \bar{\vek{x}}_i
+  \end{equation}
+  yielding the final smoothing procedure applied to the Marching Cubes reconstruction.
 
+  The \autocite[original paper]{laplacian-surf-reconst} goes more into depth about implementation details, as well as improvements to temporal coherence of resulting meshes in animations and an improved subsequent mesh decimation procedure. This report cites only the main principles required for a basic implementation and uses the \texttt{splashsurf} utility accompanying the paper as an optimized implementation.
 
   \section{Spray, Foam and Bubble Generation}
     \newpage
