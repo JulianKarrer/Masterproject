@@ -43,6 +43,8 @@
 \usepackage{amsthm}
 \newtheorem{definition}{Definition}
 
+% better tables
+\usepackage{tabu}
 
 % FAT FONTS
 \usepackage{bm} % bold fonts in math mode
@@ -82,9 +84,8 @@
 \pgfplotsset{compat=1.18} 
 \tikzexternalize[prefix=tikz,optimize=false]
 
-
 % define the Spectral_r color scheme
-\usepackage{xcolor}
+\usepackage[table, dvipsnames]{xcolor}
 \definecolor{Spectral0}{RGB}{158, 1, 66}
 \definecolor{Spectral1}{RGB}{213, 62, 79}
 \definecolor{Spectral2}{RGB}{244, 109, 67}
@@ -170,6 +171,8 @@
 % labels to enum items
 \usepackage{enumitem}
 
+\usepackage{array}
+
 % make empty lines skip
 % \usepackage{parskip}
 
@@ -221,6 +224,17 @@
     % \vskip 100\p@
   }}
 
+  \newcommand*{\@rowstyle}{}
+  \newcommand*{\rowstyle}[1]{% sets the style of the next row
+    \gdef\@rowstyle{#1}%
+    \@rowstyle\ignorespaces%
+  }
+  \newcolumntype{=}{% resets the row style
+    >{\gdef\@rowstyle{}}%
+  }
+  \newcolumntype{+}{% adds the current row style to the next column
+    >{\@rowstyle}%
+  }
   
 \usepackage[pdftex,outline]{contour}
 
@@ -510,151 +524,7 @@ Once the fluid solver is completed, including one-way coupling to boundaries as 
 
   \begin{figure}
     \centering
-    \begin{asy}[width=\textwidth]
-
-import contour;
-settings.render = 0;
-size(12cm, 6cm);
-
-// Function to draw a particle with a white fill and lightblue outline
-void particle(pair pos) {
-  draw(circle(pos, 0.5), lightblue+opacity(0.3));
-  filldraw(circle(pos, 0.005), black,black);
-}
-
-int h = 2;
-pair ok = (-3, -0.5);
-pair nok = (3, 2);
-srand(501769823); 
-real minDist = 0.9;
-
-pair view_min = (-6,-2);
-pair view_max = (6, 4);
-
-//calculate Euclidean distance between two points
-real distance(pair a, pair b) {
-  return sqrt((a.x - b.x)^2 + (a.y - b.y)^2);
-}
-// generate Poisson-like distribution
-pair[] generateParticles(real xMin, real xMax, real yMin, real yMax, real minDist, int maxPoints) {
-  pair[] points;
-  // Start with center point
-  points.push(ok);
-  points.push(nok);
-
-  int attempts = 0;
-  while (points.length < maxPoints && attempts < 10000) {
-    // Generate random point in area
-    real x = xMin + (xMax - xMin)*unitrand();
-    real y = yMin + (yMax - yMin)*unitrand();
-    pair candidate = (x, y);
-
-    // Check distance to all existing points
-    bool valid = true;
-    for (pair p : points) {
-      if (distance(p, candidate) < minDist) {
-        valid = false;
-        break;
-      }
-    }
-
-    if (valid) {
-      points.push(candidate);
-    }
-    ++attempts;
-  }
-  return points;
-}
-real yUpperBound = 2.0; 
-
-pair[] points = generateParticles(view_min.x-3, view_max.x+3, view_min.y-1, view_max.y, minDist, 9999999);
-
-// filter out points above yUpperBound
-pair[] filteredPoints;
-for (pair p : points) {
-    if (p.y <= yUpperBound) {
-        filteredPoints.push(p);
-    }
-}
-
-// draw all filtered particles in viewport
-for (pair p : filteredPoints) {
-  if (
-    view_min.x<=p.x && p.x <= view_max.x// && 
-    //view_min.y<=p.y && p.y <= view_max.y 
-  ) { 
-    particle(p);
-  }
-}
-
-
-// ISOSURFACE -------------------------------------------------
-
-void drawSPHDensityContour(pair[] points, real threshold, real xMin, real xMax, real yMin, real yMax, real h, int nx=200, int ny=100) {
-    // Create density grid (ny rows, nx columns)
-    real[][] density = new real[nx][ny];
-    real dx = (xMax - xMin)/nx;
-    real dy = (yMax - yMin)/ny;
-    real xWidth = xMax - xMin;
-    real kernelScale = 2/(pi*h^2);
-
-    for (int j = 0; j < ny; ++j) {
-        real y = yMin + j*dy;
-        for (int i = 0; i < nx; ++i) {
-            real x = xMin + i*dx;
-            density[i][j] = 0.0;
-            
-            for (pair p : points) {
-                real deltaX = x - p.x;
-                //deltaX -= xWidth * round(deltaX/xWidth);
-                real deltaY = y - p.y;
-                real r = sqrt(deltaX^2 + deltaY^2);
-                
-                if (r <= h) {
-                    density[i][j] += kernelScale * (1 - (r/h)^2);
-                }
-            }
-        }
-    }
-
-    guide[][] contours = contour(density, (xMin, yMin), (xMax, yMax), new real[] {threshold});
-    
-    for (guide[] contourSet : contours) {
-        for (guide g : contourSet) {
-            draw(g, lightblue + linewidth(1pt) + opacity(0.7));
-        }
-    }
-}
-
-drawSPHDensityContour(filteredPoints,  0.4, -6, 6, -2, 4, 1*h);
-
-// ------------------------------------------------------------
-
-
-// draw ok particle
-filldraw(circle(ok, 0.5), lightgreen+opacity(0.5), black);
-draw(circle(ok, h), dashed + black);
-
-// labeling hbar
-real phi_hbar = 0.6;
-pair hlabel = h*(cos(phi_hbar), sin(phi_hbar));
-draw(ok -- hlabel+ok, dashed);
-label("$\hbar$", hlabel*0.5+ok, NW, fontsize(8pt));
-
-// labeling h
-real phi_h = 2.5;
-pair h_vec = 0.5*(cos(phi_h), sin(phi_h));
-draw(-h_vec+ok -- h_vec+ok, opacity(0.3));
-label("$h$", h_vec*0.6+ok, S, fontsize(8pt));
-
-// draw nok particle
-filldraw(circle(nok, 0.5), red+opacity(0.5), black);
-draw(circle(nok, h), dashed + black);
-label("$\hbar$", hlabel*0.5+nok, NW, fontsize(8pt));
-draw(nok -- hlabel+nok, dashed);
-label("Density Isosurface", (-5,2.6), S, fontsize(7pt)+lightblue+opacity(0.7));
-
-    \end{asy} 
+    \asyinclude[width=\textwidth]{asymptote/particle-deficiency.asy}
     \caption{The particle deficiency phenomenon is illustrated in two dimensions, where particles positions are shown as dots with a surrounding circle of a diameter equal to the expected particle spacing $h$ (Note that particles are \textit{not} modelled as spheres but some volume of unspecified shape - only the isosurfaces of the spherically symmetric kernel function justifies this artistic choice). The particle highlighted in green lies within the fluid and has a well-sampled neighbourhood, allowing for relatively accurate estimation of the local density field through the SPH interpolation scheme. This very scheme however results in an underestimation at the free surface as highlighted for the particle shown in red which is barely inside the fluid volume, the SPH-estimated density of which however is below rest density since the lack of samples in the upper region of the kernel support is implicitly assumed to represent a density of zero, which is smoothed out across the free surface. While this effect diminishes with increasing spatial resolution and accordingly decreasing kernel support radius, leading to better resolution of the sharp discontinuity in the density field at the ideal fluid surface, the phenomenon can still lead to undesired clustering at the free surface and incorrect average densities across particles if not handled carefully, especially at lower resolutions.}
     \label{fig:particle-deficiency}
   \end{figure}
@@ -1292,14 +1162,18 @@ label("Density Isosurface", (-5,2.6), S, fontsize(7pt)+lightblue+opacity(0.7));
         + \sum_{k\in\mathcal{B}_i} m_j\vek{v}_{ik}^*\cdot \nabla W_{ik}
       }
     \end{align}
-    This source term results in the DFSPH fluid solver outlined in Algorithm \ref{alg:dfsph}. This algorithm necessitates a second convergence criterion for the velocity divergence - in the most simple case, a fixed and low iteration count such as $l_{max} = 2$ is set and the divergence solve is simply seen as a preconditioner and pressure initializer for the later, density invariant solve, applying the concept of operator splitting once more than in IISPH. Care needs to be taken to now consider both resulting pressure accelerations from the two solvers in the computation of total forces $\vek{f}_i$ exerted by the fluid on dynamic rigid bodies.
+    This source term results in the DFSPH fluid solver outlined in Algorithm \ref{alg:dfsph}. This algorithm necessitates a second convergence criterion for the velocity divergence - in the most simple case, a fixed and low iteration count such as $l_{max} = 2$ is set and the divergence solve is simply seen as another application of operator splitting, yielding what is hoped to be a much easier problem to solve to the later, density invariant solver. Care needs to be taken to now consider both resulting pressure accelerations from the two solvers in the computation of total forces $\vek{f}_i$ exerted by the fluid on dynamic rigid bodies. 
+    
+    One drawback of implementing the DFSPH solver as outlined in Algorithm \ref{alg:dfsph} is that the meaning of warm-starting each of the solvers becomes questionable. While the \autocite[original paper]{dfsph} proposes using the respective values of $\kappa_i, \kappa_i^v$ of the previous simulation step to warm-start each of the two solver separately, the same principle does not carry over to Algorithm \ref{alg:dfsph} in an obvious way - \textit{should a single pressure value be shared by the solvers and halved before one takes over from the other, should the solvers compute completely separate pressure values that are separately initialized or should some other scheme be used?} Generally, initializing pressures to a value that is too high leads to instability, while resetting pressures to a value too far from a previous solution might lead to suboptimal performance. In this report, warm-starting DFSPH is realized by using a single set of pressure values $p_i$, applying \autoref{eq:iisph-warm-start} once at the start of the time step to initialize these pressures and not resetting them at all between the two solvers. This scheme was not found to result in instability for the tested scenarios in \autoref{chp:analysis}.
 
 
   \begin{algorithm}[H]
     \caption{DFSPH Fluid Solver and Two-way Coupled Rigid Solver Step}
     \label{alg:dfsph}
     \begin{algorithmic}[1]
-      \Phase{Preliminary Computations}
+
+      \Phase{Per-Step Precomputations}
+      % \Phase{Preliminary Computations}
       \State Find neighbour sets $\mathcal{N}_i, \mathcal{B}_i$\Comment{Fixed Radius Neighbour Search (\autoref{appendix:fixed-radius-neighbour-search})}
       % \For{$i \in \mathds{N}_0^{N-1}$ in parallel}
         \State Compute densities $\rho_i$\Comment{\autoref{eq:discrete-density-boundary}}
@@ -1312,27 +1186,28 @@ label("Density Isosurface", (-5,2.6), S, fontsize(7pt)+lightblue+opacity(0.7));
         \State Compute predicted velocities $\vek{v}_i^*$\Comment{Operator splitting, \autoref{eq:operator-splitting}}
       % \EndFor
 
-      \Phase{Precomputations}
       \State Compute diagonal element $\mathds{A}_{ii}$\Comment{\autoref{eq:iisph-diagonal-element}}
-      \State Compute density invariance source term $s_{i}$\Comment{\autoref{eq:iisph-source-term}}
+      \State Compute velocity divergence source term $s_{i}^v$\Comment{\autoref{eq:velocity-divergence-source-term}}
       \State Reset pressure values or warm-start $p_i$\Comment{\autoref{eq:iisph-warm-start} or \autoref{eq:cold-start-pressure-init}}
 
 
       \Phase{Velocity Divergence Solver}
-      \For{iteration $l=0$ until convergence}
-        \State Compute pressure acceleration $\vek{a}_i^{p,l}$ \Comment{\autoref{eq:discrete-pressure-bdy}}
-        \State Compute predicted density error due to pressure accelerations $\br{\mathds{A}\vek{p}}_i^l$ \Comment{\autoref{eq:iisph-ap_i}}
-        \State Update pressure using relaxed Jacobi iteration \Comment{\autoref{eq:iisph-relaxed-jacobi-iteration} with $s_i^v$ from \autoref{eq:velocity-divergence-source-term}}
-      \EndFor
+
+      \Procedure{RelaxedJacobiSolver}{$s_i$}
+        \For{iteration $l=0$ until convergence}
+          \State Compute pressure acceleration $\vek{a}_i^{p,l}$ \Comment{\autoref{eq:discrete-pressure-bdy}}
+          \State Compute predicted density error due to pressure accelerations $\br{\mathds{A}\vek{p}}_i^l$ \Comment{\autoref{eq:iisph-ap_i}}
+          \State Update pressure using relaxed Jacobi iteration \Comment{\autoref{eq:iisph-relaxed-jacobi-iteration}}
+        \EndFor
+      \EndProcedure
+      \State \textsc{RelaxedJacobiSolver}$(s_i^v)$\Comment{$s_i^v$ from \autoref{eq:velocity-divergence-source-term}, use a fixed iteration count}
       \State $\vek{v}_i^* \gets\vek{v}_i^* + \Delta t \vek{a}_i^{p}$ \Comment{Update predicted velocities}
       \State Accumulate the used $\vek{a}_i^{p}$ to compute $\vek{f}_i$ on rigid bodies
 
       \Phase{Density Invariance Solver}
-      \For{iteration $l=0$ until convergence}\Comment{convergence critertion \autoref{eq:convergence-criterion}}
-        \State Compute pressure acceleration $\vek{a}_i^{p,l}$ \Comment{\autoref{eq:discrete-pressure-bdy}}
-        \State Compute predicted density error due to pressure accelerations $\br{\mathds{A}\vek{p}}_i^l$ \Comment{\autoref{eq:iisph-ap_i}}
-        \State Update pressure using relaxed Jacobi iteration \Comment{\autoref{eq:iisph-relaxed-jacobi-iteration} with $s_i$ from \autoref{eq:iisph-source-term}}
-      \EndFor
+      \State Compute density invariance source term $s_{i}$\Comment{\autoref{eq:iisph-source-term}}
+      % \State Reset pressure values or warm-start $p_i$\Comment{\autoref{eq:iisph-warm-start} or \autoref{eq:cold-start-pressure-init}}
+      \State \textsc{RelaxedJacobiSolver}$(s_i)$\Comment{$s_i$ from \autoref{eq:iisph-source-term}, convergence critertion \autoref{eq:convergence-criterion}}
 
       \Phase{Numerical Time Integration}
       \State $\vek{v}\br{t+\Delta t} \gets \vek{v}_i^* +\Delta t \vek{a}_i^p$ 
@@ -1375,9 +1250,9 @@ label("Density Isosurface", (-5,2.6), S, fontsize(7pt)+lightblue+opacity(0.7));
     Similarly, the computation time per iteration of the pressure solver $T_{iter}$ can be assumed to be near-constant, approximated by its long-term average $\bar{T}_{iter}$ and multiplied by the iteration count $l$ in the current step, leaving only a noise term $w$, which can reasonably be modelled as a Gaussian, additive noise accounting for any variation in the measurement that does appear.
 
     
-    The assumption that $T_{const}$ and $T_{iter}$ are near-constant across time steps is supported by a couple of observations. Note that the sorting-based neighbourhood search outlined in \autoref{appendix:fixed-radius-neighbour-search} comprises a very predictable and near-constant number of operations in $\mathcal{O}\br{N}$ in the number $N$ of particles. The SPH sums can also be assumed to take near-identical computational effort in each step since the maximum number of neighbours of each particle $M$ is near-constant for many scenes when incompressibility is strongly enforced, and neighbourhoods of particles tend to be filled as resolution increases, making the SPH sums which are in $\mathcal{O}\br{MN}$ very predictable in runtime. This is further supported by the frequent resorting of particle attribute buffers enabled by the counting sort in \autoref{appendix:fixed-radius-neighbour-search}, which enhances memory coherence and makes performance degradation due to scattered read and write operations much less significant, thus keeping the computational lower and more constant. 
+    The assumption that $T_{const}$ and $T_{iter}$ are near-constant across time steps is supported by a couple of observations. Note that the sorting-based neighbourhood search outlined in \autoref{appendix:fixed-radius-neighbour-search} comprises a very predictable and near-constant number of operations in $\mathcal{O}\br{N}$ in the number $N$ of particles. The SPH sums can also be assumed to take near-identical computational effort in each step since the maximum number of neighbours of each particle $M$ is near-constant for many scenes when incompressibility is strongly enforced, and neighbourhoods of particles tend to be filled as resolution increases, making the SPH sums which are in $\mathcal{O}\br{MN}$ very predictable in runtime. This is further supported by the frequent resorting of particle attribute buffers enabled by the counting sort in \autoref{appendix:fixed-radius-neighbour-search}, which enhances memory coherence and makes performance degradation due to scattered read and write operations much less significant, thus keeping the computational cost lower and more constant. 
     
-    This means that assuming noisy observations in the $k$-th time step $T_{const,k}$ and $T_{iter,k}$ that are symmetrically spread about some constant, expected value, an unbiased Monte-Carlo estimate of the expected values $\bar{T}_{const}, \bar{T}_{iter}$ that converges to the true constant can be obtained by the long-term average values:
+    This means that assuming noisy observations in the $k$-th time step $T_{const,k}$ and $T_{iter,k}$ that are spread about some constant, expected value, an unbiased Monte-Carlo estimate of the expected values $\bar{T}_{const}, \bar{T}_{iter}$ that converges to the true constant can be obtained by the long-term average values:
     \begin{align}
       \bar{T}_{const} &= \frac{1}{K}\sum_{k=0}^K T_{const,k}\\
       \bar{T}_{iter} &= \frac{1}{\sum_{k=0}^K l_k}\sum_{k=0}^K  l_k \cdot T_{iter,k}
@@ -1400,6 +1275,15 @@ label("Density Isosurface", (-5,2.6), S, fontsize(7pt)+lightblue+opacity(0.7));
       \item Lifting the veil of black-box optimization by modelling the performance function (as already partly done in \autoref{eq:perf-cost-model}), taking a closer analysis of the convergence behaviour of the solver into account or calculating a target iteration count (which can be controlled using a simple feedback loop) based on the ratio of constant to per-iteration costs.
     \end{enumerate} 
 
+    Design goals in creating a time step controller include:
+    \begin{enumerate}
+      \item Correctness, as in finding an optimal time step size given the problem specification
+      \item Fast convergence towards that optimal time step size
+      \item Swift adaption to changes in problem difficulty for dynamic scenes
+      \item Smooth convergence towards the optimum, since sudden jumps in time step size can cause solver instabilities
+    \end{enumerate}
+
+    Especially the last goal represents a challenge, since it rules out some common optimization techniques and can be seen as at odds with some of the other design goals, making compromise necessary.
 
     \subsubsection{Greedy Time Step Size Control}
     The performance function changes with time. Consider for example a scene with a flat, water-filled basin flowing into a tall container: at first, the maximum height of any water column in the scene is low, but it later increases, changing the performance-optimal time step size. However, it can be reasonably assumed that such changes to $\hat{P}_{k,t}$ occur on a timescale much larger than that of individual time steps $\Delta t$, for example on the scale of seconds in scenes where $\Delta t$ is on the scale of milliseconds. For now, it can be assumed that $\hat{P}_k$ is approximately constant on the scale of more time steps than necessary to find an optimum of $\hat{P}$. Perhaps the simplest method for finding such an optimum would then be a greedy \emphasis{Monte Carlo Local Search}. This method explores values in the neighbourhood of the current time step size $\Delta t_k$ using random sampling from some proposal distribution $\mathcal{P}$, which is in this case simply taken to be the normal distribution with some variance such as $\sigma^2_\mathcal{P}=10^{-6}\sec$ that is orders of magnitude smaller than the the expected time step size:
@@ -1449,7 +1333,7 @@ label("Density Isosurface", (-5,2.6), S, fontsize(7pt)+lightblue+opacity(0.7));
         &\hat{P}_k\leq\hat{P}_{k+1}'
       \end{cases}
     \end{equation}
-    where $T_k$ is a control parameter, also called 'temperature' in the context of simulated annealing \autocite{simulated-annealing} due to the physical analogy of annealing metal to find a crystalline minimum in the energy landscape of atom configurations when temperature is slowly brought down \autocite{simulated-annealing}. Note that the intended behaviour is $\lim_{T_k\searrow 0} \Pr\{\text{accept }\Delta t_{k+1}'\}=0$ to avoid division by zero. Usually, a temperature schedule for $c_k$ such as geometric cooling \autocite{simulated-annealing}, which eases the temperature towards zero, is used. The same can not be applied in this context, since $\hat{P}$ is actually time-dependent and potential changes to the function and its maximum should be explored by increasing the temperature even at a later time in the simulation.
+    where $T_k$ is a control parameter, also called 'temperature' in the context of simulated annealing \autocite{simulated-annealing} due to the physical analogy of annealing metal to find a crystalline minimum in the energy landscape of atom configurations when temperature is slowly brought down \autocite{simulated-annealing}. Note that the intended behaviour is $\lim_{T_k\searrow 0} \Pr\{\text{accept }\Delta t_{k+1}'\}=0$ to avoid division by zero. Usually, a temperature schedule for $T_k$ such as geometric cooling \autocite{simulated-annealing}, which eases the temperature towards zero, is used. The same can not be applied in this context, since $\hat{P}$ is actually time-dependent and potential changes to the function and its maximum should be explored by increasing the temperature even at a later time in the simulation.
     
     Temperature is instead controlled using the estimation for the rate of acceptance of proposals $\chi$ \autocite{simulated-annealing}:
     \begin{equation}
@@ -1464,7 +1348,7 @@ label("Density Isosurface", (-5,2.6), S, fontsize(7pt)+lightblue+opacity(0.7));
       \end{equation}
     }
     
-    where $z=\frac{a}{a+r}$ is the observed rate of improving proposals. When $z\geq\chi$ the term is undefined due to a negative argument to the logarithm and the temperature is set to zero instead by the Heaviside step function $\Theta$. This results in a temperature $T\br{\chi}$ as shown in \autoref{fig:temperature}, which differs from zero only if the rate of improvement $z$ drops below the target acceptance rate $\chi$.
+    where $z=\frac{a}{a+r}$ is the observed rate of improving proposals. When $z\geq\chi$ the fraction is undefined due to a negative argument to the logarithm and the temperature is set to zero instead by the Heaviside step function $\Theta$. This results in a temperature $T\br{\chi}$ as shown in \autoref{fig:temperature}, which differs from zero only if the rate of improvement $z$ drops below the target acceptance rate $\chi$.
 
 
     \begin{figure}
@@ -1526,7 +1410,7 @@ label("Density Isosurface", (-5,2.6), S, fontsize(7pt)+lightblue+opacity(0.7));
     To provide this flexibility at the cost of possibly oscillating about an optimal time step size, the changes of $\hat{P}$ can be estimated to occur on an order of $1\sec \gg \Delta t$ and a time horizon of e.g. $t_{hrz}=1\sec$ is introduced, beyond which observations are forgotten. Instead of calculating $T\br{\chi}$ from \autoref{eq:c-from-chi} using all observed proposals, only proposals made in the last second are considered and proposals beyond this time horizon do not contribute to the values $a$, $r$ and $\Delta \hat{P}^-$. This results in scheme that flexibly increases the temperature as to keep the rate of improving proposals in the last second of simulated time above the threshold $\chi=0.234$. 
 
 
-    Lastly, the fact that the time controller is in a \textit{delayed} feedback loop and changes to the time step size might only see effects to performance after some iterations is taken into account. This delay can be accounted for and the performance function $\hat{P}$ can be made yet less noisy by dividing the simulation so-called episodes $E=\{k, k+1, \dots, k+K_{E}-1\}$, in this case of  $K_{E}=5$ time steps each. This makes rewards for a good proposal of $\Delta t'$ more likely to be captured by the performance score of the corresponding episode, instead of rewarding some later, possibly unrelated proposal.
+    Lastly, the fact that the time controller is in a \textit{delayed} feedback loop and changes to the time step size might only see effects to performance after some iterations is taken into account. This delay can be accounted for and the performance function $\hat{P}$ can be made yet less noisy by dividing the simulation into so-called episodes $E=\{k, k+1, \dots, k+K_{E}-1\}$, using  $K_{E}=5$ time steps each in this instance. This makes rewards for a good proposal of $\Delta t'$ more likely to be captured by the performance score of the corresponding episode, instead of rewarding some later, possibly unrelated proposal.
     
     The total performance score in \autoref{eq:perf-hat-defintion} applied to one episode then becomes:
     \begin{equation}\label{eq:episode-performance}
@@ -1564,7 +1448,7 @@ label("Density Isosurface", (-5,2.6), S, fontsize(7pt)+lightblue+opacity(0.7));
 
 
 
-    The result of this automatic time step selection for an exemplary static water column is shown in \autoref{fig:metropolis-dt-plots}, highlighting how performance is approximately maximized through a convergence towards - as well oscillation about - an optimal time step size. Note that for both the recommended value of $\chi=0.234$ and the greedy local search with $\chi=0$ the pressure solver iteration count for the performance-optimal time step size tends towards low values, between the minimum of $3$ iterations and $10$ iterations, which indicates that the neighbourhood search as presented in \autoref{appendix:fixed-radius-neighbour-search} is fast enough to the point where pressure solver iterations are a bottleneck of the fluid solver implementation and are minimized by the algorithm.
+    The result of this automatic time step selection for an exemplary static water column is shown in \autoref{fig:metropolis-dt-plots}, highlighting how performance is approximately maximized through a convergence towards (despite an oscillation about) an optimal time step size. Note that for both the recommended value of $\chi=0.234$ and the greedy local search with $\chi=0$ the pressure solver iteration count for the performance-optimal time step size tends towards low values, between the minimum of $3$ iterations and $10$ iterations, which indicates that the neighbourhood search as presented in \autoref{appendix:fixed-radius-neighbour-search} is fast enough to the point where pressure solver iterations are a bottleneck of the fluid solver implementation and are minimized by the algorithm.
 
     \begin{figure}
       \centering
@@ -1934,64 +1818,10 @@ label("Density Isosurface", (-5,2.6), S, fontsize(7pt)+lightblue+opacity(0.7));
   %The intuition here is similar to the Jordan Curve theorem mentioned in \autoref{subsec:initial-conditions}: if a ray from an $O$ outside of the mesh to some point on $\triangle_{ABC}$ is imagined, then just as the number of intersections of the ray with $\partial\Omega_{rigid}$ indicates whether a point along the ray is inside or outside the domain depending on if the number of intersections is even or odd, the ray also alternates between intersecting faces with normals in or against the ray direction, and in consequence the volume containing some point on the ray is described by an even number of terms in the sum of signed volumes with alternating signs that therefore cancel to zero, or an odd number that is always negative or always positive. \autoref{fig:volume-integral-triangle-mesh} makes this much clearer by showing a concrete example in two dimensions. 
 
   \begin{figure}
-    \begin{center}
-      \begin{asy}
-import geometry;
-import patterns;
-size(10cm);
-pair[] P = {(-1,2),(2,2.5),(5,4),(4,1)};
-pair[] directions = {W, NW, NE, SE};
-pair O = (1,0);
-
-pen hatchpen = black+opacity(0.8)+linewidth(0.1);
-add("hatch1",hatch(H=1.1mm, dir=NE, p=hatchpen));
-add("hatch2",hatch(H=1.1mm, dir=NW, p=hatchpen));
-
-pen style1 = red+opacity(0.2);
-pen style2 = blue+opacity(0.2);
-pen poly_pen = linewidth(1.0) + black;
-
-path poly = P[0];
-for (int i = 0; i < P.length; ++i) {
-pair dir = directions[i % directions.length];
-dot(P[i]);
-label("$V_"+string(i)+"$", P[i], dir);
-poly = poly -- P[i];
-}
-poly = poly -- cycle;
-draw(poly, poly_pen);
-
-dot(O); label("$O$", O, S);
-
-bool isNormalTowardsO(pair A, pair B, pair O) {
-pair AB = B - A;
-pair AO = O - A;
-real cross = AB.x * AO.y - AB.y * AO.x;
-return cross > 0;
-}
-
-for (int i = 0; i < P.length; ++i) {
-pair A = P[i];
-pair B = P[(i+1) % P.length]; 
-if (isNormalTowardsO(A, B, O)) {
-  filldraw(A -- B -- O -- cycle, style1);
-} else {
-  filldraw(A -- B -- O -- cycle, style2);
-}
-}
-for (int i = 0; i < P.length; ++i) {
-pair A = P[i];
-pair B = P[(i+1) % P.length];
-if (isNormalTowardsO(A, B, O)) {
-  fill(A -- B -- O -- cycle, pattern("hatch1"));
-} else {
-  fill(A -- B -- O -- cycle, pattern("hatch2"));
-}
-}
-        \end{asy}
-        \caption{In a figure similar to the one by \autocite[Zhang and Chen]{efficient-feature-extraction}, a volume integral using the described method of signed volumes is illustrated for a polygon with vertices $V_0,V_1,V_2,V_3$ and an additional vertex $O$ at the origin. Whereas in three dimensions, volumes of tetrahedra are added, and we sum over the triangles of a mesh, in this two-dimensional setting the areas of triangles are added in a sum over edges of the mesh. Positive signed areas are coloured blue and hatched along one diagonal, negative areas are red and hatched along the other diagonal. The purple, cross-hatched area outside the mesh is therefore added once and subtracted once, resulting in a net contribution to the total area of zero, while the area inside the polygon does not cancel out and remains as the result of the computation.}
-        \label{fig:volume-integral-triangle-mesh}
-      \end{center}
+    \centering
+    \asyinclude[width=0.8\textwidth]{asymptote/volume-integral-tetrahedra.asy}
+    \caption{In a figure similar to the one by \autocite[Zhang and Chen]{efficient-feature-extraction}, a volume integral using the described method of signed volumes is illustrated for a polygon with vertices $V_0,V_1,V_2,V_3$ and an additional vertex $O$ at the origin. Whereas in three dimensions, volumes of tetrahedra are added, and we sum over the triangles of a mesh, in this two-dimensional setting the areas of triangles are added in a sum over edges of the mesh. Positive signed areas are coloured blue and hatched along one diagonal, negative areas are red and hatched along the other diagonal. The purple, cross-hatched area outside the mesh is therefore added once and subtracted once, resulting in a net contribution to the total area of zero, while the area inside the polygon does not cancel out and remains as the result of the computation.}
+    \label{fig:volume-integral-triangle-mesh}
   \end{figure}
 
   Since the fixed point $O$ is arbitrary, the most computationally efficient choice is $O=\br{0,0,0}^T$. With this choice, the signed volume of any tetrahedron $\tetrahedron_{ABCO}$ can be defined as \autocites{efficient-feature-extraction}{explicit-exact-tetrahedron-formulas}:
@@ -2436,7 +2266,7 @@ if (isNormalTowardsO(A, B, O)) {
       
       This is done by looping over all particles $i$ in parallel again, this time storing the particle index $i$ in \texttt{sorted} at the position calculated by looking up the cumulative particle count of cells with lesser indices than the cell of $i$ in $\texttt{counts}_<$ and adding the result of atomically decrementing the particle count in the cell of $i$ from a copy of \texttt{count}
     \end{enumerate}
-    This algorithm is outlined in Algorithm \ref{alg:counting-sort-construction}
+    This algorithm is outlined in Algorithm \ref{alg:counting-sort-construction} and illustrated in \autoref{fig:counting-sort}.
 
     \begin{algorithm}
       \caption{Counting Sort-based Uniform Grid Construction}
@@ -2462,6 +2292,48 @@ if (isNormalTowardsO(A, B, O)) {
       \end{algorithmic}
     \end{algorithm}
 
+    \begin{figure}
+      \centering
+      \begin{subfigure}[c]{0.35\textwidth}
+        \centering
+        \asyinclude[width=\textwidth]{asymptote/counting_sort.asy}
+        \color{black}
+    \end{subfigure}
+    \hfill
+    \begin{subfigure}[c]{0.63\textwidth}
+      \centering
+      Compute cell indices\\
+      \begin{tabular}{ |=c||+c|+c|+c|+c|+c|+c|+c|+c|+c|+c|+c| }\hline
+        \rowstyle{\color{violet}}
+        particle&0&1&2&3&4&5&6&7&8&9&\dots \\\hline
+        \rowstyle{\color{orange}}
+        \texttt{indices}&53&77&78&55&32&76&53&30&32&55&\dots\\\hline
+      \end{tabular}
+
+      \vspace{0.2cm}
+
+      Count particles per cell, compute exclusive prefix sum\\
+      \begin{tabular}{ |=c||+c|+c|+c|+c|+c|+c|+c|+c|+c|+c|+c| }\hline
+        \rowstyle{\color{orange}}
+        cell id&30&31&32&\dots&53&54&55&\dots&76&77&78 \\\hline
+        \texttt{counts}&1&0&2&\dots&2&0&2&\dots&1&1&1 \\\hline
+        \texttt{counts}$_<$&0&1&1&\dots&3&5&5&\dots&7&8&9 \\\hline
+      \end{tabular}
+
+      \vspace{0.2cm}
+      
+      Sort particle indices with respect to cell id\\
+      \begin{tabular}{ |=c||+c|+c|+c|+c|+c|+c|+c|+c|+c|+c|+c| }\hline
+        i&0&1&2&3&4&5&6&7&8&9&\dots \\\hline
+        \rowstyle{\color{violet}}
+        particle&7&4&8&0&6&3&9&5&1&2&\dots \\\hline
+        \rowstyle{\color{orange}}
+        \texttt{indices}&30&32&32&53&53&55&55&76&77&78&\dots\\\hline
+      \end{tabular}
+    \end{subfigure}
+      \caption{The process of sorting particles with respect to the integer index of their uniform grid cell along an XYZ-space-filling curve is illustrated for an example set of particle positions in two dimensions. Cell identifiers are labelled in orange, particle identifiers in violet. A counting sort is used, resulting in a buffer of particle \texttt{counts} per cell and a prefix sum thereof that can be used to look up the neighbours of each particle: the index into the sorted particle list of the first particle in each cell is known, as well as the number of subsequent particles in the list belonging to the same cell. As an example, \texttt{counts}$_<$ of cell 55 is the index of particle 3 in the sorted list and \texttt{counts} tells us that there are two particles in cell 55, which means that particle 9, which is immediately subsequent in the sorted list, is also contained in cell 55. This illustration is similar to one used by \autocite[Hoetzlin]{hoetzlein-rama-counting-sort} in the presentation the presented algorithm is based on.}
+      \label{fig:counting-sort}
+    \end{figure}
 
     \subsubsection{Query}
     Using the array of sorted particle indices, the index function $I$ and the counts of particles per cell as well as its prefix, all particles in a given cell can be queried in constant time. For a particle in cell $I_i$, all $3^d$ surrounding cells are queried. For each such surrounding cell with index $I_j$, the first particle in that cell has the index $\texttt{sorted}[\texttt{counts}_<]$ and the remaining particles in the same cell are the $\texttt{counts}[I_j]$ subsequent indices. 
