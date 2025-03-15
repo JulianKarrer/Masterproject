@@ -2058,11 +2058,46 @@ Once the fluid solver is completed, including one-way coupling to boundaries as 
     I_{kin} &= \Phi(E_{kin,i},\tau_{min}^{kin}, \tau_{max}^{kin})
   \end{align}
 
-  These potentials can then be used to determine the number of diffuse particles $N_d\in\mathds{N}$ spawned at some time step \autocite{turbulent-micropolar-foam}:
+  \subsubsection{Spawning Diffuse Particles}
+  These potentials can then be used to determine the number of diffuse particles $n_d$ spawned at some time step \autocite{turbulent-micropolar-foam}:
   \begin{equation}\label{eq:number-of-diffuse-particles}
-    N_d = \round{k \cdot I_k \frac{I_{ta}+I_{wc}}{2} \Delta t}
+    n_d = k \cdot I_k \frac{I_{ta}+I_{wc}}{2} \Delta t
   \end{equation}
   where $\Delta t$ is not necessarily related to the simulation's time step size but rather the simulated time between frames in which foam is generated (e.g. $60$ such frames per simulated second might be required for video) and the factor $k$ is the maximum number of diffuse particles spawned per second of simulated time by each fluid particle \autocite{turbulent-micropolar-foam}. Note that the kinetic energy influences both the amount of foam on wave crests and the amount of trapped air where liquids collide, which is reflected in its multiplicative contribution to the sum of other potentials in \autoref{eq:number-of-diffuse-particles}.
+
+  The resulting $n_d\in\mathds{R}$ must be converted to an integer to be a valid number of diffuse particles to spawn. While this is not discussed in any of the mentioned papers \autocites{spray-foam-bubbles}{turbulent-micropolar-foam}, it is suggested in this report to use stoachstic rounding:
+  \begin{equation}\label{eq:foam-stochastic-rounding-nd}
+    N_d = \begin{cases}
+      \left\lfloor n_d\right\rfloor + 1 & \textit{if } \xi_{n_d} < n_d - \left\lfloor n_d\right\rfloor 
+      \left\lfloor n_d\right\rfloor & \text{otherwise}
+    \end{cases}
+  \end{equation}
+  where $\xi_{n_d}\sim\mathcal{U}\br{[0;1]}$ is drawn from a uniform distribution and $\mathds{E}\left[N_d\right]=n_d$ is correct in expectation. To illustrate why this might be much more accurate than the usual, deterministic rounding per-particle, imagine millions of fluid particles with a value of $n_d=0.49$ compared to the same particles with a slightly increased $n_d=0.51$ each - the diffuse particle count would spontaneously explode as an artefact of the rounding scheme.
+
+  Now that a physically motivated number $N_d\in\mathds{N}$ of diffuse particles to generate for each fluid particle and time step has been determined, the particles can be spawned about their respective fluid particle. The fact that diffuse particles interact only with the fluid but not the other way around, meaning they are one-way coupled to the simulated system - can now be used: the computations relating to diffuse particles for some time step can simply be delayed until the simulation has already calculated the 'future' positions $\vek{x}_f\br{t+\Delta t}$ of all fluid particles at the next time step under consideration. This allows diffuse particles associated with a fluid particle to be spawned precisely in the cylinder traced by the particle's movement. The cylinder has height corresponding to the distance $\abs{\vek{x}_\Delta} = \abs{\vek{x}_f\br{t+\Delta t}-\vek{x}_f\br{t}}$ travelled by the fluid particle and the same radius $r_v$ the fluid particle would have \autocite{spray-foam-bubbles} if it was assumed to be spherical, which in terms of particle mass at rest density can be expressed as:
+  \begin{equation}
+    r_v = \sqrt[3]{\frac{3}{4}\pi \cdot \frac{m_i}{\rho_0}}
+  \end{equation}
+  Using the fluid particles' movement direction $\nvek{x}_\Delta$, an orthonormal basis $\nvek{e}_1, \nvek{e}_2, \nvek{x}_\Delta$ with $\vek{x}_f\br{t}$ as its origin can be found, using the Gram-Schmnidt procedure for example, and used to find a random point in the sampled cylinder \autocite{spray-foam-bubbles}:
+  \begin{align}
+    r &= r_v\sqrt{\xi_r}\\
+    \theta &= 2\pi \xi_\theta\\
+    h_{c} &= \abs{\vek{x}_\Delta}\xi_h\\
+    \vek{x}_d &= \vek{x}_f\br{t} + r\cos\theta \nvek{e}_1 + r\sin\theta\nvek{e}_2 + h_{c} \nvek{x}_\Delta
+  \end{align}
+  with uniformly randomly drawn $\xi_r, \xi_\theta, \xi_h \sim \mathcal{U}\br{[0;1]}$. The velocities of the particles are initialized to point in the direction of fluid velocity but away from the cylinder's centre axis in order for more realistic splashes to be obtained \autocite{spray-foam-bubbles}:
+  \begin{equation}
+    \vek{v}_d = r\cos\theta \nvek{e}_1 + r\sin\theta\nvek{e}_2 + \underbrace{\frac{1}{\Delta t}\vek{x}_\Delta}_{\vek{v}_f}
+  \end{equation}
+
+  \subsubsection{Classification and Advection}
+  Just as three different phenomena leading to diffuse particle generation are capture by the generating potentials, the diffuse particles themselves are also divided into three categories at each time step: spray, foam and bubbles. This classification determines the way in which the diffuse particles are advected.
+
+  Spray is assumed to simply move balistically through the air, unaffected by anything but gravity and external forces. In this instance, friction is neglected, external forces are assumed to be zero, meaning only gravity affects the trajectory of such particles. Using semi-implicit time integration as usual, this results in the following rule for updating velocities and positions \autocite{spray-foam-bubbles}:
+  \begin{align}
+    \vek{v}_{spay}\br{t+\Delta t} &= \vek{v}_{spay}\br{t} + \Delta t \vek{g}\\
+    \vek{x}_{spay}\br{t+\Delta t} &= \vek{x}_{spay}\br{t} + \Delta t \vek{v}_{spay}\br{t+\Delta t}
+  \end{align}
 
 
   % Since this leads to a lot of user-defined parameters, \autocite[subsequent authors suggest]{turbulent-micropolar-foam} always setting $\tau_{min}=0.1\cdot \tau_{max}$. The normalization of $K$ in \autoref{eq:k-kernel-def} as well as a normalization of the kinetic energy that is discussed later makes the process mostly scale-independent, meaning a cheap, low-resolution simulation of a scene can be observed to tune these parameters, which are then reused in a more expensive simulation. An alternative to this is 
