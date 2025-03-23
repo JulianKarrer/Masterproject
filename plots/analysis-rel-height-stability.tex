@@ -1,0 +1,67 @@
+
+\begin{figure}
+\centering
+\begin{tikzpicture}
+    \begin{axis}[
+        width=0.8\textwidth,
+        height=0.5\textwidth,
+        xtick      ={0.5,1,2,4,8,16}, 
+        xticklabels={0.5,1,2,4,8,16}, 
+        xmode = log,
+        ymode = linear,
+        scale only axis,
+        grid=both,
+        major grid style={line width=0.5pt, opacity=0.6}, 
+        minor grid style={line width=0.2pt, opacity=0.3},
+        legend pos=north west,
+        legend cell align=left,
+        xlabel={Fluid Column Height $\left[\text{m}\right]$},
+        ylabel={Relative Mean Absolute Height Error $\sfrac{\bar{\epsilon}}{\bar{\epsilon}_0}$},
+        yticklabel style={/pgf/number format/fixed,
+                  /pgf/number format/precision=3},
+]% dfsph-warm
+\addplot[color=Spectral3, thick, opacity=1.0, mark=*] coordinates {
+(0.5 , 0.9999216725039768)
+(1.0 , 0.9997122334262342)
+(2.0 , 0.9993149081483949)
+(4.0 , 0.9999876657630371)
+(8.0 , 0.999811963557098)
+(16.0 , 1.0027798818767448)
+};
+ \addlegendentry{DFSPH};
+% iisph-cold
+\addplot[color=Spectral9, thick, opacity=1.0, mark=*] coordinates {
+(0.5 , 1.0)
+(1.0 , 1.0)
+(2.0 , 1.0)
+(4.0 , 1.0)
+(8.0 , 1.0)
+(16.0 , 1.0)
+};
+ \addlegendentry{IISPH cold start};
+% iisph-warm
+\addplot[color=Spectral1, thick, opacity=1.0, mark=*] coordinates {
+(0.5 , 0.9999433074141157)
+(1.0 , 0.99999381914728)
+(2.0 , 0.9995504052933465)
+(4.0 , 0.9991958912546096)
+(8.0 , 0.999855926899059)
+(16.0 , 1.0039403850080704)
+};
+ \addlegendentry{IISPH warm start};
+% pcisph-3iter
+\addplot[color=Spectral7, thick, opacity=1.0, mark=*] coordinates {
+(0.5 , 0.9999932502920872)
+(1.0 , 1.0000033183493142)
+(2.0 , 0.9999944204896846)
+(4.0 , 1.0003892001383397)
+(8.0 , 1.0010864324114528)
+(16.0 , 1.0064169172382675)
+};
+ \addlegendentry{PCISPH};
+
+\end{axis}
+\end{tikzpicture}
+\caption{The stability of a simulation is measured by tracking the maximum $y$-position of any fluid particle in the scene and comparing it to the expected rest height $H$ of the simulated fluid column at each simulated time step. The absolute error $\epsilon = \abs{\max_i \pi_y\br{\vek{x}_{i}} - H}$ (where $\pi_y$ is the projection on the vertical axis) is measured at each time step and averaged across the entire simulation. It is then normalized by the error incurred by the cold-started IISPH solver, meaning the vertical axis in the graph shows the absolute height error \textit{relative} to that of the baseline, cold-started IISPH implementation from Algorithm \ref{alg:fluid-sim}. It is revealed that PCISPH in particular suffers increasingly from unwanted oscillations in the fluid column, resulting in increasing height errata and an unstable surface as the scene becomes more complex. While the warm-started IISPH and DFSPH solvers manage to keep the column even closer to its intended height than the cold-started IISPH for some scenes, the latter appears to eventually win out in terms stability as the scene complexity increases, which is within expectations.}
+\label{fig:analysis-rel-height-stability}
+\end{figure}

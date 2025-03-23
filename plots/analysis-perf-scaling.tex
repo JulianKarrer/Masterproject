@@ -1,0 +1,67 @@
+
+\begin{figure}
+\centering
+\begin{tikzpicture}
+    \begin{axis}[
+        width=0.8\textwidth,
+        height=0.5\textwidth,
+        xtick      ={0.5,1,2,4,8,16}, 
+        xticklabels={0.5,1,2,4,8,16}, 
+        xmode = log,
+        ymode = log,
+        scale only axis,
+        grid=both,
+        major grid style={line width=0.5pt, opacity=0.6}, 
+        minor grid style={line width=0.2pt, opacity=0.3},
+        legend pos=north east,
+        legend cell align=left,
+        xlabel={Fluid Column Height $\left[\text{m}\right]$},
+        ylabel={Average Performance $\bar{P}$},
+        scaled y ticks=false, 
+        log ticks with fixed point,
+]% dfsph-warm
+\addplot[color=Spectral3, thick, opacity=1.0, mark=*] coordinates {
+(0.5 , 0.9395181009328762)
+(1.0 , 0.6838309439016899)
+(2.0 , 0.3694383538611304)
+(4.0 , 0.1636684805800582)
+(8.0 , 0.0723469633868242)
+(16.0 , 0.0279315739833854)
+};
+ \addlegendentry{DFSPH};
+% iisph-cold
+\addplot[color=Spectral9, thick, opacity=1.0, mark=*] coordinates {
+(0.5 , 1.1314876915170762)
+(1.0 , 0.7360096434535042)
+(2.0 , 0.382918541470585)
+(4.0 , 0.1815280049685672)
+(8.0 , 0.0620307197401571)
+(16.0 , 0.0181358584057129)
+};
+ \addlegendentry{IISPH cold start};
+% iisph-warm
+\addplot[color=Spectral1, thick, opacity=1.0, mark=*] coordinates {
+(0.5 , 1.303470590081847)
+(1.0 , 0.8662959666912285)
+(2.0 , 0.4499490341444654)
+(4.0 , 0.1969022123575641)
+(8.0 , 0.0845245877272692)
+(16.0 , 0.0287412821969958)
+};
+ \addlegendentry{IISPH warm start};
+% pcisph-3iter
+\addplot[color=Spectral7, thick, opacity=1.0, mark=*] coordinates {
+(0.5 , 0.7712863262581213)
+(1.0 , 0.3432442329857904)
+(2.0 , 0.1869318822913555)
+(4.0 , 0.111402951069702)
+(8.0 , 0.041416487940399)
+(16.0 , 0.0129333717545103)
+};
+ \addlegendentry{PCISPH};
+
+\end{axis}
+\end{tikzpicture}
+\caption{Each solver is tested on a static fluid column as observed in \autoref{fig:water-column-analysis} of varying height. It is observed that performance drastically decreases as the height of the fluid column increases, substantiating that the fluid column height is a valid measure of scene complexity in this setting. Note the logarithmic scaling on both axes of the plot. It can be seen that all curves follow more or less the same trajectory but are spaced out vertically, suggesting that while the general scaling of performance with scene complexity might be similar amongst solvers, the performance of each solver differs by a factor, which is in line with expectations. For all testes scenes, it can be observed that IISPH and DFSPH consistently outperform PCISPH and that warm-starting the IISPH solver results in higher performance than resetting pressure values does. \autoref{fig:analysis-relative-perf} provides a closer look at the relative performances of solvers by dividing each curve by the result for the cold-started IISPH solver.}
+\label{fig:analysis-perf-scaling}
+\end{figure}

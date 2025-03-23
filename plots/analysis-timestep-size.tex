@@ -1,0 +1,67 @@
+
+\begin{figure}
+\centering
+\begin{tikzpicture}
+    \begin{axis}[
+        width=0.8\textwidth,
+        height=0.5\textwidth,
+        xtick      ={0.5,1,2,4,8,16}, 
+        xticklabels={0.5,1,2,4,8,16}, 
+        xmode = log,
+        ymode = log,
+        scale only axis,
+        grid=both,
+        major grid style={line width=0.5pt, opacity=0.6}, 
+        minor grid style={line width=0.2pt, opacity=0.3},
+        legend pos=north east,
+        legend cell align=left,
+        xlabel={Fluid Column Height $\left[\text{m}\right]$},
+        ylabel={Mean Optimized Time Step Size $\overline{\Delta t}$ $[\sec]$},
+        scaled y ticks=false, 
+        log ticks with fixed point,
+]% dfsph-warm
+\addplot[color=Spectral3, thick, opacity=1.0, mark=*] coordinates {
+(0.5 , 0.0020091433398094186)
+(1.0 , 0.0017872077565154424)
+(2.0 , 0.0014042861932294266)
+(4.0 , 0.0009110349504199991)
+(8.0 , 0.0007956610670704527)
+(16.0 , 0.0007363319445893342)
+};
+ \addlegendentry{DFSPH};
+% iisph-cold
+\addplot[color=Spectral9, thick, opacity=1.0, mark=*] coordinates {
+(0.5 , 0.001955934547675641)
+(1.0 , 0.0015075831490910796)
+(2.0 , 0.0011113880965852164)
+(4.0 , 0.0007952757321850331)
+(8.0 , 0.0007678681854165702)
+(16.0 , 0.0007132903004140143)
+};
+ \addlegendentry{IISPH cold start};
+% iisph-warm
+\addplot[color=Spectral1, thick, opacity=1.0, mark=*] coordinates {
+(0.5 , 0.0024432663298177893)
+(1.0 , 0.0019993664637486773)
+(2.0 , 0.0016111244344615369)
+(4.0 , 0.0013266803096263827)
+(8.0 , 0.0008985991747216395)
+(16.0 , 0.0007219652139523544)
+};
+ \addlegendentry{IISPH warm start};
+% pcisph-3iter
+\addplot[color=Spectral7, thick, opacity=1.0, mark=*] coordinates {
+(0.5 , 0.0018134845351954227)
+(1.0 , 0.0018400340843304516)
+(2.0 , 0.0014459661696350067)
+(4.0 , 0.0008697896874109668)
+(8.0 , 0.0006729442632956333)
+(16.0 , 0.0005449795710192483)
+};
+ \addlegendentry{PCISPH};
+
+\end{axis}
+\end{tikzpicture}
+\caption{The average of the time step size $\Delta t$ across the simulation, as optimized by the time step controller in \autoref{sec:optimal-time-step-controller}, is plotted against the fluid column height. It can be observed that, perhaps unsurprisingly, the optimal time step size decreases as the complexity of the scene increases. While the IISPH and DFSPH solvers run optimally at more similar time step sizes as complexity increases, PCISPH requires increasingly small time step sizes in comparison. Warm-starting the IISPH solver appears to consistently increase the optimal time step size.}
+\label{fig:analysis-timestep-size}
+\end{figure}
