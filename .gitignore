@@ -1,6 +1,7 @@
 sources
 *.asy
 main-*
+masterproject-julian-karrer-*
 main.bbl-SAVE-ERROR
 ltex*
 !dbnsymb.mf
@@ -9,6 +10,7 @@ ltex*
 *.dat 
 *.script
 tikzmain-*
+tikzmasterproject-*
 
 ## Core latex/pdflatex auxiliary files:
 *.aux
