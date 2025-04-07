@@ -816,3 +816,138 @@ keywords = {SPH, fluid simulation, incompressibility},
 location = {New Orleans, Louisiana},
 series = {SIGGRAPH '09}
 }
+
+@Manual{blender,
+  title = {{Blender - a 3D modelling and rendering package}},
+  author = {{Blender Online Community}},
+  address = {Stichting Blender Foundation, Amsterdam},
+  year = {2025},
+  note = {(software, \url{https://www.blender.org/})}
+ } 
+
+@article{blinn-blobbies,
+author = {Blinn, James F.},
+title = {{A Generalization of Algebraic Surface Drawing}},
+year = {1982},
+issue_date = {July 1982},
+publisher = {Association for Computing Machinery},
+address = {New York, NY, USA},
+volume = {1},
+number = {3},
+issn = {0730-0301},
+url = {https://doi.org/10.1145/357306.357310},
+doi = {10.1145/357306.357310},
+journal = {ACM Trans. Graph.},
+month = jul,
+pages = {235–256},
+numpages = {22}
+}
+
+@inproceedings{sand-fluid-zhu-bridson,
+author = {Zhu, Yongning and Bridson, Robert},
+title = {{Animating sand as a fluid}},
+year = {2005},
+isbn = {9781450378253},
+publisher = {Association for Computing Machinery},
+address = {New York, NY, USA},
+url = {https://doi.org/10.1145/1186822.1073298},
+doi = {10.1145/1186822.1073298},
+abstract = {We present a physics-based simulation method for animating sand. To allow for efficiently scaling up to large volumes of sand, we abstract away the individual grains and think of the sand as a continuum. In particular we show that an existing water simulator can be turned into a sand simulator with only a few small additions to account for inter-grain and boundary friction.We also propose an alternative method for simulating fluids. Our core representation is a cloud of particles, which allows for accurate and flexible surface tracking and advection, but we use an auxiliary grid to efficiently enforce boundary conditions and incompressibility. We further address the issue of reconstructing a surface from particle data to render each frame.},
+booktitle = {ACM SIGGRAPH 2005 Papers},
+pages = {965–972},
+numpages = {8},
+keywords = {water, sand, physical simulation, animation},
+location = {Los Angeles, California},
+series = {SIGGRAPH '05}
+}
+
+@article{surface-reconstr-anisotropic,
+author = {Yu, Jihun and Turk, Greg},
+title = {{Reconstructing surfaces of particle-based fluids using anisotropic kernels}},
+year = {2013},
+issue_date = {January 2013},
+publisher = {Association for Computing Machinery},
+address = {New York, NY, USA},
+volume = {32},
+number = {1},
+issn = {0730-0301},
+url = {https://doi.org/10.1145/2421636.2421641},
+doi = {10.1145/2421636.2421641},
+abstract = {In this article we present a novel surface reconstruction method for particle-based fluid simulators such as Smoothed Particle Hydrodynamics. In particle-based simulations, fluid surfaces are usually defined as a level set of an implicit function. We formulate the implicit function as a sum of anisotropic smoothing kernels, and the direction of anisotropy at a particle is determined by performing Principal Component Analysis (PCA) over the neighboring particles. In addition, we perform a smoothing step that repositions the centers of these smoothing kernels. Since these anisotropic smoothing kernels capture the local particle distributions more accurately, our method has advantages over existing methods in representing smooth surfaces, thin streams, and sharp features of fluids. Our method is fast, easy to implement, and our results demonstrate a significant improvement in the quality of reconstructed surfaces as compared to existing methods.},
+journal = {ACM Trans. Graph.},
+month = feb,
+articleno = {5},
+numpages = {12},
+keywords = {Computer graphics, anisotropic basis functions, fluid simulation, physically based animation, surface reconstruction}
+}
+
+@article{dual-contouring-hermite,
+author = {Ju, Tao and Losasso, Frank and Schaefer, Scott and Warren, Joe},
+title = {{Dual contouring of hermite data}},
+year = {2002},
+issue_date = {July 2002},
+publisher = {Association for Computing Machinery},
+address = {New York, NY, USA},
+volume = {21},
+number = {3},
+issn = {0730-0301},
+url = {https://doi.org/10.1145/566654.566586},
+doi = {10.1145/566654.566586},
+abstract = {This paper describes a new method for contouring a signed grid whose edges are tagged by Hermite data (i.e; exact intersection points and normals). This method avoids the need to explicitly identify and process "features" as required in previous Hermite contouring methods. Using a new, numerically stable representation for quadratic error functions, we develop an octree-based method for simplifying contours produced by this method. We next extend our contouring method to these simpli£ed octrees. This new method imposes no constraints on the octree (such as being a restricted octree) and requires no "crack patching". We conclude with a simple test for preserving the topology of the contour during simplification.},
+journal = {ACM Trans. Graph.},
+month = jul,
+pages = {339–346},
+numpages = {8},
+keywords = {contouring, crack prevention, implicit functions, polyhedral simplification, quadratic error functions}
+}
+
+@article{unified-surftension-pressure-friction-timo,
+author = {Probst, Timo and Teschner, Matthias},
+title = {{Unified Pressure, Surface Tension and Friction for SPH Fluids}},
+year = {2024},
+issue_date = {February 2025},
+publisher = {Association for Computing Machinery},
+address = {New York, NY, USA},
+volume = {44},
+number = {1},
+issn = {0730-0301},
+url = {https://doi.org/10.1145/3708034},
+doi = {10.1145/3708034},
+abstract = {Fluid droplets behave significantly different from larger fluid bodies. At smaller scales, surface tension and friction between fluids and the boundary play an essential role and are even able to counteract gravitational forces. There are quite a few existing approaches that model surface tension forces within an SPH environment. However, as often as not, physical correctness and simulation stability are still major concerns with many surface tension formulations. We propose a new approach to compute surface tension that is both robust and produces the right amount of surface tension.Conversely, less attention was given to friction forces at the fluid-boundary interface. Recent experimental research indicates that Coulomb friction can be used to describe the behavior of droplets resting on a slope. Motivated by this, we develop a novel friction force formulation at the fluid-boundary interface following the Coulomb model, which allows us to replicate a new range of well known fluid behavior such as the motion of rain droplets on a window pane.Both forces are combined with an IISPH variant into one unified solver that is able to simultaneously compute strongly coupled surface tension, friction and pressure forces.},
+journal = {ACM Trans. Graph.},
+month = dec,
+articleno = {7},
+numpages = {28},
+keywords = {Physically-based animation, smoothed particle hydrodynamics, droplets, surface tension, friction, pressure, implicit solver, strong coupling}
+}
+
+@article{weiler-implicit-viscosity,
+author = {Weiler, Marcel and Koschier, Dan and Brand, Magnus and Bender, Jan},
+title = {{A Physically Consistent Implicit Viscosity Solver for SPH Fluids}},
+journal = {Computer Graphics Forum},
+volume = {37},
+number = {2},
+pages = {145-155},
+keywords = {CCS Concepts, •Computing methodologies → Physical simulation},
+doi = {https://doi.org/10.1111/cgf.13349},
+url = {https://onlinelibrary.wiley.com/doi/abs/10.1111/cgf.13349},
+eprint = {https://onlinelibrary.wiley.com/doi/pdf/10.1111/cgf.13349},
+abstract = {Abstract In this paper, we present a novel physically consistent implicit solver for the simulation of highly viscous fluids using the Smoothed Particle Hydrodynamics (SPH) formalism. Our method is the result of a theoretical and practical in-depth analysis of the most recent implicit SPH solvers for viscous materials. Based on our findings, we developed a list of requirements that are vital to produce a realistic motion of a viscous fluid. These essential requirements include momentum conservation, a physically meaningful behavior under temporal and spatial refinement, the absence of ghost forces induced by spurious viscosities and the ability to reproduce complex physical effects that can be observed in nature. On the basis of several theoretical analyses, quantitative academic comparisons and complex visual experiments we show that none of the recent approaches is able to satisfy all requirements. In contrast, our proposed method meets all demands and therefore produces realistic animations in highly complex scenarios. We demonstrate that our solver outperforms former approaches in terms of physical accuracy and memory consumption while it is comparable in terms of computational performance. In addition to the implicit viscosity solver, we present a method to simulate melting objects. Therefore, we generalize the viscosity model to a spatially varying viscosity field and provide an SPH discretization of the heat equation.},
+year = {2018}
+}
+
+@article{implicit-linearly-elastic-solids,
+author = {Peer, Andreas and Gissler, Christoph and Band, Stefan and Teschner, Matthias},
+title = {{An Implicit SPH Formulation for Incompressible Linearly Elastic Solids}},
+journal = {Computer Graphics Forum},
+volume = {37},
+number = {6},
+pages = {135-148},
+keywords = {physically based animation, animation, fluid modelling, animation, particle systems, animation, Categories and Subject Descriptors (according to ACM CCS): I.3.7 Computer Graphics: Three, Dimensional Graphics and Realism, Animation},
+doi = {https://doi.org/10.1111/cgf.13317},
+url = {https://onlinelibrary.wiley.com/doi/abs/10.1111/cgf.13317},
+eprint = {https://onlinelibrary.wiley.com/doi/pdf/10.1111/cgf.13317},
+abstract = {Abstract We propose a novel smoothed particle hydrodynamics (SPH) formulation for deformable solids. Key aspects of our method are implicit elastic forces and an adapted SPH formulation for the deformation gradient that—in contrast to previous work—allows a rotation extraction directly from the SPH deformation gradient. The proposed implicit concept is entirely based on linear formulations. As a linear strain tensor is used, a rotation-aware computation of the deformation gradient is required. In contrast to existing work, the respective rotation estimation is entirely realized within the SPH concept using a novel formulation with incorporated kernel gradient correction for first-order consistency. The proposed implicit formulation and the adapted rotation estimation allow for significantly larger time steps and higher stiffness compared to explicit forms. Performance gain factors of up to one hundred are presented. Incompressibility of deformable solids is accounted for with an ISPH pressure solver. This further allows for a pressure-based boundary handling and a unified processing of deformables interacting with SPH fluids and rigids. Self-collisions are implicitly handled by the pressure solver.},
+year = {2018}
+}
+

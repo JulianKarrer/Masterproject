@@ -66,6 +66,7 @@
 \usepackage[inline]{asymptote}
 \usepackage{qtree}
 \usepackage{tikz}
+\usetikzlibrary{calc}
 
 % nicer fractions
 \usepackage{xfrac}
@@ -291,47 +292,98 @@
 
 % ~~~~~~~~~ START ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
+\usepackage{transparent} % make background image semitransparent
+\usepackage{ragged2e} % left flush env
+
 \captionsetup[figure]{font=footnotesize,labelfont=footnotesize,justification=centering}
+
 \begin{document}
+
 \begin{titlepage}
   \pagestyle{empty}
-
-  \begin{center}
-    \Huge\textbf{Incompressible SPH Fluids with Two-Way Coupled Rigid Bodies}\\
+  \AddToShipoutPicture{%
+  \AtPageLowerLeft{%
+    \put(\dimexpr 0.5\paperwidth-0.45\paperwidth - 7cm\relax, %
+         \dimexpr 0.5\paperheight-0.45\paperheight + 3cm\relax) %
+    {%
+      \transparent{0.04}%
+      \includegraphics[width=\paperwidth]{images/uni-siegel.pdf}%
+    }%
+  }%
+}
+  \begingroup
+  \vspace*{6cm}
+  \begin{FlushLeft}
+    % \noindent %
+    % \Large\textbf{Master's Project}\\
     \vspace{0.5cm}
-    \Large{Julian Karrer}\\
-    \vfill
-    \Large
-    % \contour{black}{\textcolor{white}{Lab Course}}\\
-    % \contour{black}{\textcolor{white}{Master of Science in Computer Science}}\\
-    \begin{figure}[H]
-        \centering
-        \includegraphics[width=1\textwidth]{images/title2.png}
-    \end{figure}
-    \vfill
-    % \vspace{5.2cm}
-    % \vspace{0.5cm}
+    \noindent %
+    \Huge\textbf{Incompressible SPH Fluids with\\Two-Way Coupled Rigid Bodies}\\
+    \vspace{0.5cm}
+    \noindent %
+    \Large{Julian Karrer}
+  \end{FlushLeft}
+  % \vspace{17cm}
+  \vfill
+  \begin{center}
     \large
     Faculty of Engineering\\
     Department of Computer Science\\
     Supervised by Prof. Dr.-Ing. Matthias Teschner\\
-    \vspace{0.5cm}
+    \vspace{0.1cm}
     \includegraphics*[width=5cm]{images/ufr-logo.png}
   \end{center}
+  \endgroup
 \end{titlepage}
 % \captionsetup[figure]{font=normalsize,labelfont=normalsize}
+\newpage{}
+% \thispagestyle {empty}
+\ClearShipoutPicture
 
 \tableofcontents
 \newpage
 
 \chapter{Introduction}
-This report aims to outline a complete implementation of a robust, fully GPU-parallel particle based solver for incompressible fluid flow problems with weakly coupled rigid bodies that can two-way interact with the fluid. The solver is efficient enough to make simulations with high spatial resolution and corresponding particle counts well into the millions feasible on a single machine with consumer hardware. Diffuse spray, foam and air bubbles are generated in a physically motivated way to enhance visual realism for simulations of sufficiently large spatial scale for such effects to occur. \\
 
-The governing equations to be solved, namely the incompressible Navier-Stokes equations in Lagrangian form are introduced and discretized using the Smoothed Particle Hydrodynamics scheme, or SPH for short, in \autoref{chp:sph}. 
+The physically based simulation of fluids is an undeniably relevant field of study with diverse applications from engineering and Computational Fluid Dynamics to Computer Graphics and the photorealistic synthesis of images and video for films, commercials and games. At their intersection, solvers based on the Smoothed Particle Hydrodynamics or SPH discretization are being developed that use a Lagrangian framework especially convenient for otherwise challenging scenes involving free-surface fluid flows, deformable solids, highly viscous materials, highly complex boundary geometries and multi-material interactions \autocite{tutorial2019}. These advances have spawned commercial software used in both computer-aided engineering and in animation \autocite{tutorial2019}.\\
 
-This leads to a set of equations that can be worked into a fluid solver in \autoref{chp:fluid}. Most challengingly, this solver must uphold incompressibility, leading to a pressure solver that must solve the pressure Poisson equation, in this case using a relaxed Jacobi solver with different choices of source term that lead to different behaviour of the solver. 
+This report outlines a complete implementation of a robust, fully GPU-parallel particle based solver for incompressible fluid flow problems with two-way coupled rigid bodies based on a Smoothed Particle Hydrodynamics discretization, or SPH for short, implemented in the Taichi programming language \autocite{taichi-sparse}. An Implicit Incompressible SPH pressure solver is used to solve the pressure Poisson equation and enforce incompressibility within an arbitrarily small, user defined error threshold, guaranteeing a high simulation quality without perceivable oscillations, drift or other artefacts. The solver is efficient enough to make simulations with high spatial resolution and correspondingly high particle counts well into the millions feasible on a single machine with consumer hardware. It can handle close to arbitrary, complex boundary geometry, procedurally moving and intersecting boundaries and can accurately calculate the dynamics of rigid bodies specified from arbitrary triangular meshes. Diffuse particles representing spray, foam and air bubbles can be generated in a physically motivated way to enhance visual realism and animate large-scale dynamic scenes such as the one shown in \autoref{fig:title-image}, while also being able to handle high-resolution, smaller-scale scenes like the one shown in \autoref{fig:title-image-2}.\\
 
-Once the fluid solver is completed, including one-way coupling to boundaries as discussed in \autoref{chp:rigid}, the remainder of the chapter discusses a second, rigid body solver, that uses an SPH-based surface representation to interact with the former and enable two-way interactions of rigid bodies with fluids. Challenges include a robust sampling of surfaces, the accurate calculation of the required volume and moments of mass of triangular meshes and 
+\begin{figure}
+  \centering
+  \includegraphics[width=\textwidth]{images/title2.png}
+  \caption{A maritime scene with over $1.5$ million fluid particles, highly complex boundary geometry represented by over $3$ million particles, a wave-generating, sinusoidally moving procedural boundary and a large, two-way coupled battleship floating dynamically on an ocean of incompressible fluid with an average density error of less than $0.1\%$ is simulated by the solver described in this report, highlighting its versatility, robustness and ability to accurately produce highly realistic fluid simulations. Up to $1.6$ million diffuse particles representing spray, foam and bubbles are visible at the shoreline, enhancing the visual realism and dynamicity of the scene. The fluid surface is accurately reconstructed and finally rendered using \autocite[Blender]{blender} to produce the above image. Full videos of the scenes used in this report are \href{https://www.youtube.com/playlist?list=PL9sgPh0msS271Sp0r7aQ8-PJpn9vhyxVJ}{available online} (\url{https://www.youtube.com/playlist?list=PL9sgPh0msS271Sp0r7aQ8-PJpn9vhyxVJ})}
+  \label{fig:title-image}
+\end{figure}
+
+
+\begin{figure}
+  \centering
+  \includegraphics[width=\textwidth]{images/wine-240-far-smoothed.png}
+  \caption{In contrast to the physically large-scale scene in \autoref{fig:title-image}, this high resolution simulation with $1.3$ million fluid particles and $3$ million boundary particles is concerned with a small-scale setting of a red liquid being poured into a glass. Even on these scales, the incompressible fluid simulation yields realistic and visually plausible results, despite some effects that are more relevant on smaller scales, such as surface tension, not being explicitly modelled in this report. Diffuse particles are not generated here, since they are more prevalent in scenes of larger scales.
+  Full videos of the scenes used in this report are \href{https://www.youtube.com/playlist?list=PL9sgPh0msS271Sp0r7aQ8-PJpn9vhyxVJ}{available online} (\url{https://www.youtube.com/playlist?list=PL9sgPh0msS271Sp0r7aQ8-PJpn9vhyxVJ})}
+  \label{fig:title-image-2}
+\end{figure}
+
+The report gives a conceptual, high-level overview of each topic before diving deeper into implementation-relevant details. It is structured along the three main components required to realize simulations such as the one shown in \autoref{fig:title-image} or the one in \autoref{fig:title-image-2}: an incompressible SPH fluid solver, a corresponding boundary handling scheme and rigid body solver and finally a pipeline for visualization of the simulation results. 
+
+\hyperref[chp:sph]{Chapter 2} is concerned with the theoretical underpinning of the fluid simulation, discussing the Navier-Stokes equations that describe the dynamics of the fluid flow problem and the Smoothed Particle Hydrodynamics discretization scheme employed to numerically solve it. 
+
+These concepts are then used in \autoref{chp:fluid} to derive an incompressible SPH fluid solver that solves the pressure Poisson equation or PPE for short, using a matrix-free relaxed Jacobi solver to guarantee incompressibility and uphold the continuity equation. A particular focus in this chapter is a comprehensive derivation of the diagonal element of the system matrix posed by the PPE, which is crucial for a correct pressure solver implementation but rarely discussed in the literature to the presented level of detail. \hyperref[chp:fluid]{Chapter 3} also presents pressure solver variations with differing source terms that are considered state-of-the-art \autocites{dfsph}{consistent-boundaries} and are assessed for their relative performance in \autoref{chp:analysis}. Said analysis makes use of a proposed controller that uses a metaheuristic to dynamically adjust the time step size used in the simulation to maximize performance, thereby closing a critical free parameter and making performance measurements more comparable while also increasing overall simulation efficiency, which is described in \autoref{sec:optimal-time-step-controller}. 
+
+The following \autoref{chp:rigid} discusses a particle-based boundary representation that uses the previously derived pressure solver to enforce impenetrability, can handle nearly arbitrary and highly complex boundary geometry robustly and can deal with moving and intersecting boundaries such as the wave-generator used in the making of \autoref{fig:title-image}. An iterative scheme is proposed to accurately initialize the effective masses of boundary particles and Poisson disk sampling is employed to generate a low-discrepancy set of particles on the surface of the boundary geometry. The same boundary handling scheme is used to sample the surfaces of dynamic rigid bodies described in \autoref{sec:rigid-bodies}, which are simulated and two-way coupled to the fluid solver from \autoref{chp:fluid}. The rigid body solver is enhanced by using quaternions as the representation of orientation in a way that minimizes numerical drift in the orthonormalization of the derived rotation matrices. The mass moments and properties required for this solver, such as the centre of mass and inertia tensor, are calculated using a method that is analytically exact for watertight triangular meshes of uniform density using a rather uncommon signed-volumes approach described in \autoref{sec:mass-moments}, with further details and a more convenient formula than that commonly found in the literature discussed in \autoref{chp:analytic-tetrahedron-inertia}. 
+
+Having described all necessary components for creating a realistic fluid simulation with two-way coupled rigid bodies, the visualization of the results is discussed in \autoref{chp:visualization}. Surfaces are reconstructed from volumetric particle data and smoothed using a specialized procedure in \autoref{sec:surface-reconstruction}. Physically motivated generation of diffuse particles representing spray, foam and bubbles is then discussed, enhancing the visual realism of the simulated scenes in a post-processing step.
+
+Finally, \autoref{chp:analysis} analyses the behaviour of the presented pressure solvers using the time step controller from \autoref{sec:optimal-time-step-controller}, with a particular focus on how performance and the optimal time step size vary with scene complexity and how varying source terms and the warm-starting of pressure solvers affects relative performance and stability. 
+
+
+% The governing equations to be solved, namely the incompressible Navier-Stokes equations in Lagrangian form are introduced and discretized using the Smoothed Particle Hydrodynamics scheme, or SPH for short, in \autoref{chp:sph}. 
+
+% This leads to a set of equations that can be worked into a fluid solver in \autoref{chp:fluid}. Most challengingly, this solver must uphold incompressibility, leading to a pressure solver that must solve the pressure Poisson equation, in this case using a relaxed Jacobi solver with different choices of source term that lead to different behaviour of the solver. 
+
+% Once the fluid solver is completed, including one-way coupling to boundaries as discussed in \autoref{chp:rigid}, the remainder of the chapter discusses a second, rigid body solver, that uses an SPH-based surface representation to interact with the former and enable two-way interactions of rigid bodies with fluids. Challenges include a robust sampling of surfaces, the accurate calculation of the required volume and moments of mass of triangular meshes and 
+
 
 
 \chapter{Smoothed Particle Hydrodynamics}\label{chp:sph}
@@ -707,13 +759,13 @@ Once the fluid solver is completed, including one-way coupling to boundaries as 
       &= \rho_0 - \rho_i - \Delta t \sum_{j\in\mathcal{N}_i}  m_j\vek{v}^*_{ij}\cdot\nabla W_{ij} &\textit{simplify}
     \end{align}
     which can be extended using the boundary handling of \autoref{chp:rigid} like in \autoref{subsub:bdy-extend-governing} to:
-    \begin{equation}
+    \equationnamed{Density Invariance Source Term}{\begin{equation}
       s_i = \angled{\rho_0-\rho^*} =
       \rho_0 - \rho_i 
       - \Delta t \sum_{j\in\mathcal{N}_i}  m_j\vek{v}^*_{ij}\cdot\nabla W_{ij} 
       - \Delta t \sum_{k\in\mathcal{B}_i}  m_k\vek{v}^*_{ik}\cdot\nabla W_{ik}
       \label{eq:iisph-source-term}
-    \end{equation}
+    \end{equation}}
     where for static boundaries one can assume $\vek{v}^*_k=\vek{0}$ while for weakly coupled dynamic rigid bodies as describe in \autoref{sec:rigid-bodies} $\vek{v}^*_k \approx \vek{v}_k\br{t}$ can serve as the best guess. 
     
     \horizontalspacer
@@ -1032,9 +1084,9 @@ Once the fluid solver is completed, including one-way coupling to boundaries as 
 
     \subsubsection{Relaxed Jacobi Solver}\label{subsec:jacobi-solver}
     With the source term $s_i$ shown in \autoref{eq:iisph-source-term}, the diagonal element $\mathds{A}_{ii}$ from \autoref{eq:iisph-diagonal-element}, both of which can be pre-computed, as well as the pressure acceleration $\vek{a}_i^p$ in \autoref{eq:discrete-pressure-bdy} and the right-hand side of the PPE $\br{\mathds{A}\vek{p}}_i$ in \autoref{eq:iisph-ap_i}, all the values required to implement a relaxed Jacobi solver and solve the system of equations for the unknown pressures $p_i$ are available. The core idea here is to iterate:
-    \begin{equation}
-      p_i^{l+1} = \br{p_i^{l} + \omega \frac{s_i-\br{\mathds{A}\vek{p}_i}}{\mathds{A}_{ii}}\cdot\mathds{1}\br{\mathds{A}_{ii}>\epsilon}}_+\label{eq:iisph-relaxed-jacobi-iteration}
-    \end{equation}
+  \equationnamed{Relaxed Jacobi Step}{\begin{equation}
+    p_i^{l+1} = \br{p_i^{l} + \omega \frac{s_i-\br{\mathds{A}\vek{p}_i}}{\mathds{A}_{ii}}\cdot\mathds{1}\br{\mathds{A}_{ii}>\epsilon}}_+\label{eq:iisph-relaxed-jacobi-iteration}
+  \end{equation}}
     until the predicted density error per particle $\br{\rho^{err}_i}^l = \br{\mathds{A}\vek{p}}_i-s_i$ fulfils some convergence criterion. The indicator function $\mathds{1}\br{P}$ for a predicate $P$ is used to only update the pressure when the diagonal element, which the predicted density error is divided by, is greater than some positive, small threshold like $\epsilon=10^{-6}$ in order to avoid numerical instabilities and divisions by zero. Note also the use of the clamping operator $\br{x}_+ = \max\br{0, x}$ that can be viewed as a proximal operator \autocite{monolithic-rigids-timo} and ensures that pressure values are always positive. This prevents undesirable clumping artefacts that could otherwise occur when using an SPH discretization \autocite{iisph} and are speculated to result from the assumption that regions with incompletely sampled regions at free surfaces are implicitly assumed to have a pressure value of zero where there are no fluid particles (as illustrated in \autoref{fig:particle-deficiency}) \autocite{tutorial2019}. Since the solver is run until convergence, this clamping is unproblematic because it effectively shifts all pressure values up to be positive, while not changing the pressure \textit{gradient} that is actually used to compute pressure forces and accelerations \autocite{tutorial2019}.
 
     The choice of a relaxation parameter $\omega\in\left]0,1\right[$ is not just the namesake of the relaxed Jacobi solver but determines its convergence properties: like with any relaxation scheme, a higher value of $\omega$ leads to faster convergence, while a lower value of $\omega$ might prevent numerical instabilities. In practice, the critical value $\omega=0.5$ is used, which is the highest value that has been shown to lead to robust convergence \autocite{iisph}.
@@ -1073,12 +1125,12 @@ Once the fluid solver is completed, including one-way coupling to boundaries as 
   Note that the maximum predicted density error is a strict upper bound of the average predicted error, so the threshold for $\rho^{l}_{max}$ poses a stricter constraint and can be relaxed to $0.5\%$ for example.
 
   The final convergence criterion is a boolean predicate on the predicted density errors $\br{\rho_i^{err}}^l$ in the $l$-th iteration and can be stated as:
-  \begin{equation}
+  \equationnamed{Convergence Critertion}{\begin{equation}
     \br{\rho^l_{avg} \leq \rho^{thresh}_{avg}}
     \land \br{\rho^l_{max} \leq \rho^{thresh}_{max}}
     \land \br{l_{min} \leq l \leq l_{max}}
     \label{eq:convergence-criterion}
-  \end{equation}
+  \end{equation}}
   where minimum and maximum solver iteration counts such as $l_{min}=3, l_{max}=\infty$ can be added to increase robustness and ensure reasonably converged pressure values to use when warm-starting the next iteration. Recommended choices for the threshold values are $\rho^{thresh}_{avg}=0.1\%$ \autocite{iisph} and $\rho^{thresh}_{max}=0.5\%$.
 
   Using only upper bounds as thresholds, i.e. $\leq$ in \autoref{eq:convergence-criterion}, ensures that only compressions are penalized by the solver whereas a predicted density below rest density is allowed, since the particle deficiency phenomenon (see \autoref{subsec:particle-deficiency}) could otherwise cause the solver to never converge when the ratio of surface area to volume of the fluid in its current configuration is large and for example $\abs{\rho^l_{avg}} \leq \rho^{thresh}_{avg}$ could never be true. 
@@ -1165,13 +1217,13 @@ Once the fluid solver is completed, including one-way coupling to boundaries as 
       \kappa_i^v &= \frac{1}{\Delta t}\frac{D \rho_i}{D t}\alpha_i
     \end{align}
     where the computationally expensive but common factor $\alpha_i = -\frac{\Delta t^2}{\rho_i\mat{A}_{ii}}$ can be reused. Each coefficient is used in a subsequent, iterative solve of the PPE using the respective source term formulation, each updating predicted velocities that are finally integrated to update particle positions. Note that the terms given in the \autocite[DFSPH paper]{dfsph} do not include boundary handling, proper clamping of values and other details that can be critical for stability and are present in the \autocite[authors' own implementation]{SPlisHSPlasH_Library}. Since the density invariance solve of DFSPH is not just equivalent to IISPH but the main author of the DFSPH paper \autocite{dfsph} \autocite[in a later paper]{consistent-boundaries} \textit{defined} DFSPH to be a relaxed Jacobi solver as outlined in this report, but using an additional velocity divergence source term, followed by the exact density invariant solver seen in Algorithm \ref{alg:fluid-sim}, this is the form of the DFSPH solver stated in the following, rather than an equivalent form using $\kappa_i, \kappa_i^v$. The discretized velocity divergence source term was already mentioned in \autoref{eq:iisph-source-term} and is simply:
-    \begin{align}\label{eq:velocity-divergence-source-term}
+    \equationnamed{Velocity Divergence Source Term}{\begin{align}\label{eq:velocity-divergence-source-term}
       s_i^v &= - \Delta t \br{\frac{D\rho}{D t}}^* =- \Delta t  \rho_0 \angled{\divergence\vek{v}^*_i}_{\divergence} \\
       &= -\Delta t \rho_0  \br{
         \sum_{j\in\mathcal{N}_i} m_j\vek{v}_{ij}^*\cdot \nabla W_{ij}
         + \sum_{k\in\mathcal{B}_i} m_j\vek{v}_{ik}^*\cdot \nabla W_{ik}
       }
-    \end{align}
+    \end{align}}
     This source term results in the DFSPH fluid solver outlined in Algorithm \ref{alg:dfsph}. This algorithm necessitates a second convergence criterion for the velocity divergence - in the most simple case, a fixed and low iteration count such as $l_{max} = 2$ is set and the divergence solve is simply seen as another application of operator splitting, yielding what is hoped to be a much easier problem to solve to the later, density invariant solver. Care needs to be taken to now consider both resulting pressure accelerations from the two solvers in the computation of total forces $\vek{f}_i$ exerted by the fluid on dynamic rigid bodies. 
     
     One drawback of implementing the DFSPH solver as outlined in Algorithm \ref{alg:dfsph} is that the meaning of warm-starting each of the solvers becomes questionable. While the \autocite[original paper]{dfsph} proposes using the respective values of $\kappa_i, \kappa_i^v$ of the previous simulation step to warm-start each of the two solver separately, the same principle does not carry over to Algorithm \ref{alg:dfsph} in an obvious way - \textit{should a single pressure value be shared by the solvers and halved before one takes over from the other, should the solvers compute completely separate pressure values that are separately initialized or should some other scheme be used?} Generally, initializing pressures to a value that is too high leads to instability, while resetting pressures to a value too far from a previous solution might lead to suboptimal performance. In this report, warm-starting DFSPH is realized by using a single set of pressure values $p_i$, applying \autoref{eq:iisph-warm-start} once at the start of the time step to initialize these pressures and not resetting them at all between the two solvers. This scheme was not found to result in instability for the tested scenarios in \autoref{chp:analysis}.
@@ -1947,8 +1999,44 @@ Once the fluid solver is completed, including one-way coupling to boundaries as 
   for every vertex of the input mesh at $t=0$. Since only rigid body dynamics are described in this report and deformations of the mesh therefore do not occur, this procedure suffices to render the effects of the solver in Algorithm \ref{alg:fluid-sim}.
 
 
-  \section{Surface Reconstruction}
-  The fluid is less trivial to visualize, since an explicit representation of the fluid surface is not usually part of the simulation and must instead be reconstructed from the explicitly computed quantities in a post-processing step. Although methods that \autocite[explicitly operate on a surface representation]{surface-only-fluids} exist, most simulation methods in which field quantities are computed throughout the continuum rely on an isosurface reconstruction of a scalar field to construct a surface mesh from a set of particle positions. In this report, the \texttt{splashsurf} utility implementing \autocite[Weighted Laplacian Smoothing for Surface Recontruction]{laplacian-surf-reconst} was used, the main concepts of which are outlined in the following.
+  \section{Surface Reconstruction}\label{sec:surface-reconstruction}
+  The fluid is less trivial to visualize, since an explicit representation of the fluid surface is not usually part of the simulation and must instead be reconstructed from the explicitly computed quantities in a post-processing step. Although methods that \autocite[explicitly operate on a surface representation]{surface-only-fluids} exist, most simulation methods in which field quantities are computed throughout the continuum rely on an isosurface reconstruction of a scalar field to construct a surface mesh from a set of particle positions. In this report, the \texttt{splashsurf} utility implementing \autocite[Weighted Laplacian Smoothing for Surface Recontruction]{laplacian-surf-reconst} was used, the main concepts of which are outlined in the following. 
+  
+  Note that the presented method is a more recent addition to a long line of research into reconstruction of surfaces from particle data and many alternative solutions exist. This includes early \autocite[implicit, Gaussian point-splatting]{blinn-blobbies} approaches, the later use of \autocite[Marching Cubes]{marching-cubes} directly applied to whether some grid cell contains a particle or not \autocite{müller-2003}, then its application to a smoothed field with added post-processing \autocite{sand-fluid-zhu-bridson}, more elaborate approaches like \autocite[anisotropic kernels]{surface-reconstr-anisotropic} that better capture detail and smooth out planar regions, or methods that replace Marching Cubes with a different isosurface reconstruction such as \autocite[dual contouring]{dual-contouring-hermite} entirely, trading possibly non-manifold results for the flexibility of not relying on uniform grids, amongst other considerations.
+
+  The results of \autocite[Weighted Laplacian Smoothing]{laplacian-surf-reconst} compared to a regular \autocite[Marching Cubes]{marching-cubes} reconstruction are illustrated in \autoref{fig:surface-reconstruction}, highlighting the advantages of the following method.
+
+
+  \begin{figure}
+    \centering
+    \begin{subfigure}[t][0.5\textwidth]{0.5\textwidth}
+      \includegraphics[width=\textwidth]{images/wine-240-far-smoothed.png}
+      \caption{Result with Weighted Laplacian Smoothing}
+      \label{fig:glass-a}
+    \end{subfigure}%
+    \begin{subfigure}[t][0.5\textwidth]{0.5\textwidth}
+      \includegraphics[width=\textwidth]{images/wine-240-far-unsmoothed.png}
+      \caption{Unsmoothed result}
+      \label{fig:glass-b}
+    \end{subfigure}\vspace{1cm}
+
+
+    \begin{subfigure}[t][0.5\textwidth]{0.5\textwidth}
+      \includegraphics[width=\textwidth]{images/wine-240-close-smoothed-new.png}
+      \caption{Close-up result with Weighted Laplacian Smoothing}
+      \label{fig:glass-c}
+    \end{subfigure}%
+    \begin{subfigure}[t][0.5\textwidth]{0.5\textwidth}
+      \includegraphics[width=\textwidth]{images/wine-240-close-unsmoothed-new.png}
+      \caption{Close-up unsmoothed result}
+      \label{fig:glass-d}
+    \end{subfigure}
+    \vspace{0.5cm}
+    \caption{Renderings of a fluid simulation using the IISPH fluid solver in Algorithm \ref{alg:fluid-sim} of a glass of red liquid being poured are shown, reconstructed with Weighted Laplacian Smoothing in \autoref{fig:glass-a} and \autoref{fig:glass-b} on the left side and a basic marching cubes algorithm in \autoref{fig:glass-b} and \autoref{fig:glass-d} on the right side. The top row shows that results might appear similar at first glance, but the fluid flow in \autoref{fig:glass-a} in the vicinity of the bottle's opening appears more laminar, whereas artefacts of the Marching Cubes algorithm, resulting in bumps, make the flow in \autoref{fig:glass-b} appear more irregular. Due to the refraction applied to the material of the liquid in rendering, the smoothed result appears more translucent, whereas small surface bumps cause more unpredictable light bounces and therefore more volumetric absorption in \autoref{fig:glass-b}, making the stream appear darker. The close-up view in \autoref{fig:glass-c} shows a smooth surface, while \autoref{fig:glass-d} makes these small bumps clearly visible. Note that the smoothing does \textit{not} cause individual droplets in \autoref{fig:glass-c} to lose volume or even collapse, retaining detail up to the actual particle resolution, while volume in more planar regions is indeed reduced in the smoothing process as compared to \autoref{fig:glass-d}.}
+    \label{fig:surface-reconstruction}
+  \end{figure}
+
+  \horizontalspacer
   
   It is intuitively clear that the density field, for example, is suited to indicating whether any point in space lies within or outside the fluid: a density near the rest density of the fluid certainly implies that a point is inside the fluid volume, while a density close to zero certainly belongs to a point outside the fluid. The fluid surface can then be approximated by an isosurface of some threshold value $t$, which can be set ad-hoc to yield visually plausible results. Assuming that particles have (approximately, see \autoref{subsec:initial-conditions}) uniform sizes and masses, a commonly used alternative to the density field that is suited for post-processing scenarios where only particle positions are known is the so-called \emphasis{colour field}, which can be defined as the standard SPH discretization (\autoref{eq:sph-sum}) of the indicator function of the fluid volume and which is therefore closely related to the density field \autocite{laplacian-surf-reconst}:
   \begin{equation}\label{eq:colour-field-def}
@@ -2174,10 +2262,10 @@ Once the fluid solver is completed, including one-way coupling to boundaries as 
   \end{figure}
 
   
-  The analysis in this report does not claim to make absolute, quantitative observations about the performance of these solvers in general, but rather to provide a framework in which statements about the \textit{relative} performance of solver variations on a given machine, using a given implementation, can more robustly be made. 
+  The analysis in this report does not claim to make absolute, quantitative observations about the performance of these solvers in general, but rather to provide a framework in which statements about the \textit{relative} performance of solver variations on a given machine, using a given implementation, can more robustly be made. So while analysing the impact of warm-starting an otherwise identical algorithm or comparing the same algorithm in varying scenes can result in more reliable conclusions, the comparison of two more starkly different solvers could be affected by inefficiencies in the respective implementation rather than inherent properties of the algorithm. Note once again that all the presented solvers, including the solver introduced in the following \autoref{subsec:pcisph} for comparison, have been shown recently to be \autocite[equivalent]{2022-survey-equographics-star} in a strong sense, meaning they differ at most by factors such as the ease of reusing values for more efficient computation or by their convergence behaviour. In fact, later results in this chapter (\autoref{fig:analysis-perf-scaling}, \autoref{fig:analysis-timestep-size}) are in line with this expectation, showing similar behaviour up to a multiplicative factor.
   
-  \subsubsection{An Iterative Equation-of-State Solver for Comparison}
-  One of the questions of interest is how the more elaborate solvers presented in this report compare against simpler fluid solvers. The most basic and therefore obvious comparison would be between the discussed IISPH and DFSPH solvers and a basic, weakly compressible SPH solver, or WCSPH for short, which computes pressures directly as a function of the density error using an equation of state, without explicitly solving the pressure Poisson equation \autocite{wcsph}. This solver, although easy to implement potentially efficient for low-complexity scenes, is hard to compare against the presented solvers using the outlined methodology: since the solver is not iterative, it cannot be forced to stay within the error threshold specified by the convergence criterion in \autoref{eq:convergence-criterion}. While the time step size can be controlled such that the criterion is upheld most of the time or in expectation, it can momentarily be broken, leading to an unfair advantage in a comparison of the performance metric, which is extremely sensitive to the error threshold that is enforced. 
+  \subsubsection{An Iterative Equation-of-State Solver for Comparison}\label{subsec:pcisph}
+  One of the questions of interest is how the more elaborate solvers presented in this report compare against simpler fluid solvers. The most basic and therefore obvious comparison would be between the discussed IISPH and DFSPH solvers and a basic, weakly compressible SPH solver, or WCSPH for short, which computes pressures directly as a function of the density error using an equation of state, without explicitly, globally solving the pressure Poisson equation \autocite{wcsph}. This solver, although easy to implement potentially efficient for low-complexity scenes, is hard to compare against the presented solvers using the outlined methodology: since the solver is not iterative, it cannot be forced to stay within the error threshold specified by the convergence criterion in \autoref{eq:convergence-criterion}. While the time step size can be controlled such that the criterion is upheld most of the time or in expectation, it can momentarily be broken, leading to an unfair advantage in a comparison of the performance metric, which is extremely sensitive to the error threshold that is enforced. 
   
   Instead, the next simplest, iterative solver that realizes an \textit{incompressible} fluid solver that can strictly enforce the convergence criterion by employing operator splitting and iteratively applying a specialized equation of state was implemented here as a baseline for comparison: \emphasis{Predictive-Corrective SPH} or PCISPH for short. The solver relates errors in the predicted density at a particle directly to pressures by simply using the ideal gas law as an equation of state:
   \begin{equation}\label{eq:pcisph-eos}
@@ -2190,7 +2278,7 @@ Once the fluid solver is completed, including one-way coupling to boundaries as 
   \end{align}
   where $k_{tplt}$ is computed for an idealized template particle at the origin, surrounded by perfectly sampled neighbours on a regular cubic lattice $h\cdot \mathds{Z}^3$ with particle spacing $h$ \autocite{pcisph}. 
   
-  This means that $k_{tplt}$ only depends on the geometry of the problem, such as the choice of kernel function $W$, particle spacing $h$, smoothing length and support radius $\hbar$, and must only ever be evaluated once per such choice. In contrast to IISPH and DFSPH where values equivalent to stiffness coefficients are computed per-particle and time step, $k_{tplt}$ is a global constant and the only value that must be regularly recomputed in \autoref{eq:pcisph-stiffness} is $\beta$. Assuming equal masses of particles, even this has to only be done onece per time step, not once per-particle.
+  This means that $k_{tplt}$ only depends on the geometry of the problem, such as the choice of kernel function $W$, particle spacing $h$, smoothing length and support radius $\hbar$, and must only ever be evaluated once per such choice. Note the similarity of $k$ in \autoref{eq:pcisph-stiffness} to the diagonal element of IISPH (\autoref{eq:iisph-diagonal-element}), which is in a sense \autocite[equivalent]{2022-survey-equographics-star} to PCISPH. However, in contrast to IISPH and DFSPH where values equivalent to stiffness coefficients are computed per-particle and time step, $k_{tplt}$ is a global constant and the only value that must be regularly recomputed in \autoref{eq:pcisph-stiffness} is $\beta$. Assuming equal masses of particles, even this has to only be done once per time step, not once per-particle.
    
   
   The resulting, computationally inexpensive pressure computation is factored out using the concept of operator splitting (\autoref{eq:operator-splitting}) and iterated upon to accumulate a pressure $p_i=\sum_l \Delta p_i^l$ that results in an uncompressed state, fulfilling some convergence criterion (e.g. \autoref{eq:convergence-criterion}). This results in the solver outlined in Algorithm \ref{alg:pcisph} \autocite{pcisph}.
@@ -2251,7 +2339,7 @@ Once the fluid solver is completed, including one-way coupling to boundaries as 
 
   The graph reveals that the performance decreases at what appears to be at least an exponential rate for the scenes under consideration, substantiating that the fluid column height is in fact the dominating factor in the computational cost of simulating each scene in this static setting. The performance curves seem follow more or less the same trend, which is unsurprising considering that they can \autocite[all be shown to be functionally equivalent to some degree]{2022-survey-equographics-star}, albeit with a difference in relative performance that appears to manifest in a vertical offset of the curves in the logarithmic plot. This points to the conclusion that while these incompressible SPH fluid solvers behave similar in terms of the scaling of their performance in scene complexity, they are separated by some multiplicative factor for the scenes measured. This factor is more closely investigated in the analysis surrounding \autoref{fig:analysis-relative-perf}. 
   
-  It can also be observed that the PCISPH solver that uses a single, global stiffness coefficient is outperformed across all scenes by the solvers that are more explicitly designed to solve the full system posed by the pressure Poisson equation efficiently. This becomes substantial at greater scene complexities where performance is generally low and a relative increase in performance results in greater absolute savings of compute time. Warm-starting the IISPH solver can be observed in this case to lead to the consistently highest performance measurements.
+  It can also be observed that the PCISPH solver that uses a single, global stiffness coefficient is, in this implementation, outperformed across all scenes by the solvers that are more explicitly designed to solve the full system posed by the pressure Poisson equation efficiently. This becomes substantial at greater scene complexities where performance is generally low and a relative increase in performance results in greater absolute savings of compute time. Warm-starting the IISPH solver can be observed in this case to lead to the consistently highest performance measurements.
 
   \horizontalspacer
 
@@ -2268,18 +2356,18 @@ Once the fluid solver is completed, including one-way coupling to boundaries as 
   \input{plots/analysis-timestep-size}
 
   \section{Performance Comparison of Solvers}
-  The obvious question arising from the different solver variations presented in this report and the presented methodology for performance analysis is how much relative performance each solver achieves in direct comparison. While performance is certainly not the only criterion for the quality of a fluid solver, and perhaps not even the most important one when compared to ease of use, stability, robustness, the versatility of boundary handling schemes, quality and temporal consistency of the velocity and pressure fields, ability to handle viscous effects, surface tension effects, interplay with other solvers with regard to multi-physics simulation and many more, it is still an important and oft-discussed factor when considering which pressure solver to use. 
+  The obvious question arising from the different solver variations presented in this report and the presented methodology for performance analysis is how much relative performance each solver achieves in direct comparison. While performance is certainly not the only criterion for the quality of a fluid solver, and perhaps not even the most important one when compared to ease of use, stability, robustness, the versatility of boundary handling schemes, quality and temporal consistency of the velocity and pressure fields, ability to handle viscous effects, surface tension effects, interplay with other solvers with regard to multi-physics simulation and many more, it is still an important and oft-discussed factor when considering which pressure solver to use. Note that comparisons between differing solvers are less conclusive, since performance differences due to implementation details rather than algorithmic advantages cannot be ruled out.
 
   To make the performance comparison easier, the performance measurement from \autoref{fig:analysis-perf-scaling} is normalized by dividing each curve by the results for the cold-started IISPH solver, which serves as a baseline  $\bar{P}_0$ for relative comparisons, defining the value $1$. This results in a graph showing the relative performance of each solver as a factor of the cold-started IISPH performance for varying scene complexity in \autoref{fig:analysis-relative-perf}. 
 
   \input{plots/analysis-relative-perf}
 
-  The graph confirms a couple of assumptions. Firstly, it appears that warm-starting the IISPH solver unsurprisingly results in increased performance, with up to a $\sim60\%$ increase found for the most complex scenes. The warm-started DFSPH solver, which initially performs worse than the baseline implementation with seemingly more overhead due to the additional source term than it is worth, achieves increasingly similar performances to the best-performing warm-started IISPH solver. Finally, a third group of performance scores is traced by the PCISPH solver, which performs consistently worse than its counterparts across all scenes, hovering between $50\%$ and $70\%$ of the baseline IISPH implementation's performance, which highlights the performance advantages to be gained in complex scenes by solving the pressure Poisson equation globally.
+  The graph confirms a couple of assumptions. Firstly, it appears that warm-starting the IISPH solver unsurprisingly results in increased performance, with up to a $\sim60\%$ increase found for the most complex scenes. The warm-started DFSPH solver, which initially performs worse than the baseline implementation with seemingly more overhead due to the additional source term than it is worth, achieves increasingly similar performances to the best-performing warm-started IISPH solver. Finally, a third group of performance scores is traced by the PCISPH solver, which performs consistently worse than its counterparts across all scenes, hovering between $50\%$ and $70\%$ of the baseline IISPH implementation's performance, which could indicate the possible performance advantages to be gained in complex scenes by solving the pressure Poisson equation using per-particle coefficients.
 
   This method of comparing solver performances in a robust way for benchmark scenes might serve as a framework for evaluating not just the established methods presented in this report, but could potentially serve as useful feedback during the development of new solvers or while optimizing implementations, making the process more rigorous. Instead of simply assuming an optimization would result in a performance gain, changes to an implementation can be compared against a previous iteration thereof to gain confidence in whether a change did indeed have a positive impact, without worrying about the effects of ad-hoc parameter choices regarding the time step size $\Delta t$.
 
   \section{Stability Comparison of Solvers}
-  As previously mentioned, performance is by far not the only, or even the most relevant, aspect to consider when choosing a fluid solver. Another especially important criterion is the stability and quality of the simulation produced by the solver, which in application to Computer Graphics might be judged by whether any undesired visual artefacts occur. A classic artefact inherent to solvers that minimize absolute density errors and compressions (and, contrary to some beliefs, irrespective of whether a Lagrangian scheme such as SPH or an Eulerian scheme is chosen), is the manifestation of accumulated solver errors as oscillations, as opposed to volume shrinkage or drift caused by differential source terms. One of the declared goals of DFSPH \autocite{dfsph} and the idea of combining source terms is indeed minimizing such oscillations and producing a more temporally consistent velocity and pressure field, amongst other things. While this supposed boon of DFSPH might not be as prominent in this analysis, where a very low minimum iteration count for each solver was chosen in order to better compare performances, giving the divergence-free solver less opportunity to reduce such artefacts, it might still be interesting to compare oscillations in the data obtained in the previous sections.
+  As previously mentioned, performance is by far not the only, or even the most relevant, aspect to consider when choosing a fluid solver. Another especially important criterion is the stability and quality of the simulation produced by the solver, which in application to Computer Graphics might be judged by whether any undesired visual artefacts occur. A usual artefact inherent to solvers that minimize absolute density errors and compressions (and, contrary to some beliefs, irrespective of whether a Lagrangian scheme such as SPH or an Eulerian scheme is chosen), is the manifestation of accumulated solver errors as oscillations, as opposed to volume shrinkage or drift caused by differential source terms. One of the declared goals of DFSPH \autocite{dfsph} and the idea of combining source terms is indeed minimizing such oscillations and producing a more temporally consistent velocity and pressure field, amongst other things. While this supposed boon of DFSPH might not be as prominent in this analysis, where a very low minimum iteration count for each solver was chosen in order to better compare performances, giving the divergence-free solver less opportunity to reduce such artefacts, it might still be interesting to compare oscillations in the data obtained in the previous sections.
 
   Again, the goal of solver stability requirements in practical application to Computer Graphics could be seen to lie in the reduction of visual artefacts and not directly, as might be the case in more engineering-focused applications, to reduce errors in field quantities, as measured for example in scenes for which analytic solutions to the Navier-Stokes equations exist. For that reason, this report opts not to measure the kinetic energy present in the ideally stationary, hydrostatic water column, the velocity divergence or some other indirect error metric, but to observe undesired oscillations in the column's height, since this is a property of the trajectories of the particles that persists beyond surface reconstruction and is certainly visible, whereas velocity errors and kinetic energies might not, or only indirectly, be. 
 
@@ -2293,10 +2381,29 @@ Once the fluid solver is completed, including one-way coupling to boundaries as 
   
   Secondly, it can be observed that the clearest trend amongst the curves is traced by the PCISPH solver, which once more consistently performs worse than its counterparts and the error of which compared to standard IISPH grows more and more as the scene's complexity increases. 
 
-  Thirdly, it can be seen that the warm-started IISPH and DFSPH solvers might achieve better height errors than IISPH for lower complexity scenes (although the empirical significance of this result is questionable), while eventually being outperformed by cold-started IISPH. It was argued when introducing \autoref{eq:iisph-warm-start} that cold-starting the solver can improve stability for especially difficult scenes at the cost of some performance, which is evidenced here. Note that all measurements are normalized by the error of the cold-started IISPH implementation, so the apparent rise in errors of warm-started solvers for complex scenes can just as well be interpreted as a relative \textit{decrease} in errors by the cold-started IISPH. Contrary to the interpretation regarding the time step size in the previous section, there appears to be a \textit{negative} correlation or trade-off between stability and performance regarding whether to cold- or warm-start an IISPH solver, with cold starts resulting in a more robust solver for complex scenes at the cost of some performance. 
+  Thirdly, it can be seen that the warm-started IISPH and DFSPH solvers might achieve better height errors than IISPH for lower complexity scenes (although the empirical significance of this result is questionable), while eventually being outperformed by cold-started IISPH. It was argued when introducing \autoref{eq:iisph-warm-start} that cold-starting the solver can improve stability for especially difficult scenes at the cost of some performance, which is substantiated here. Note that all measurements are normalized by the error of the cold-started IISPH implementation, so the apparent rise in errors of warm-started solvers for complex scenes can just as well be interpreted as a relative \textit{decrease} in errors by the cold-started IISPH. Contrary to the interpretation regarding the time step size in the previous section, there appears to be a \textit{negative} correlation or trade-off between stability and performance regarding whether to cold- or warm-start an IISPH solver, with cold starts resulting in a more robust solver for complex scenes at the cost of some performance. 
 
   \input{plots/analysis-rel-height-stability}
 
+
+  \chapter{Conclusion}\label{chp:conclusion}
+  In this report, an implementation of a fully GPU-parallel, performant and robust state-of-the-art SPH-based incompressible fluid solver with a two-way coupled rigid body solver was motivated, outlined and analysed. The solver is capable of handling complex, intersecting and procedurally moving boundary geometry, enforcing incompressibility up to an arbitrarily small threshold and processing the results for visualization, including the addition of physically motivated spray, foam and bubble generation. 
+  
+  The Navier-Stokes equations that describe fluid flow in general and incompressible flow in particular where presented along with the Smoothed Particle Hydrodynamics scheme employed to discretize the equations. The pressure Poisson equation was derived, discretized and a perhaps uncommonly detailed derivation of the relaxed Jacobi solver and the diagonal element used to solve the equations using Implicit Incompressible SPH pressure solvers was shown. Similarities and differences to other methods and solver variations such as Divergence-Free SPH, which uses a differing source term, were presented and discussed.
+
+  An uncommon time step size controller using the concept of Metropolis Random Walks and Simulated Annealing and a corresponding heuristic for control of the exploration-exploitation trade-off in dynamic scenes was developed and put to practical use. This enabled more efficient simulation and more robust performance analyses in \autoref{chp:analysis} which are free of ad-hoc parameter choices of the time step size. 
+
+  A particle based, robust and flexible boundary handling scheme was presented that can handle close to arbitrary boundary geometry, including procedurally or dynamically moving and intersecting boundaries. The scheme monolithically integrates into the incompressible fluid pressure solver, using it to resolve contacts. An iterative mass initialization per-particle was proposed and a process for sampling low-discrepancy particle distributions on input surfaces to obtain a boundary sampling was described.
+  
+  A rigid body solver that uses quaternions to more accurately represent orientations and rotation with less numerical drift was shown and the calculation of mass moments required in the solver was outlined in detail using a less common method that remarkably is exact for watertight triangular input meshes. 
+
+  The visualization of the simulation results was discussed, including a stat-of-the-art surface reconstruction and smoothing approach and a physically motivated procedure for generating diffuse particles representing spray, foam and bubbles, enhanced by a proposed stochastic approach for spawning precisely the desired number of particles in expectation. This concluded the outline of a complete fluid solver and two-way coupled rigid body solver from the input scene specification to final, synthesized photorealistic images and videos of virtual scenes.
+
+  The time step size controller was used to present an uncommon or novel methodology for performance analysis that was applied to investigate the relationships between performance of solver variations and scene complexity, whether the IISPH pressure solver is warm-started or not, and between different, equivalently incompressible pressure solvers that vary in their implementation details. 
+
+  The following appendices give further insight into details of the neighbourhood search algorithm used in the implementation (\autoref{appendix:fixed-radius-neighbour-search}) and show expressions for the calculation of mass moments of tetrahedra that were corrected and re-written in a more convenient form from sources in the literature (\autoref{chp:analytic-tetrahedron-inertia}).
+
+  Future work based on this report might include investigating the relative performances and optimal time step sizes of solvers with differing convergence behaviour, such as Conjugate Gradient approaches \autocites{monolithic-rigids-timo}{iisph}, further investigating the application of metaheuristics and learning algorithms to parameter choice in SPH fluid simulation, or extending the presented solver with new features such as accurate rigid-rigid interactions \autocite{monolithic-rigids-timo}, surface tension \autocite{unified-surftension-pressure-friction-timo}, highly viscous \autocite{weiler-implicit-viscosity} or elastic materials \autocite{implicit-linearly-elastic-solids}, accurate vorticity \autocite{turbulent-micropolar-foam} and more.
 
 \begin{appendices}
     \chapter{Fixed Radius Neighbour Search}\label{appendix:fixed-radius-neighbour-search}
